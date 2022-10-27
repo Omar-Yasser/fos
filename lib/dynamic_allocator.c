@@ -92,11 +92,41 @@ struct MemBlock *find_block(struct MemBlock_List *blockList, uint32 va)
 //=========================================
 // [3] INSERT BLOCK IN ALLOC LIST [SORTED]:
 //=========================================
+void listInsert(struct MemBlock *blockToInsert)
+{
+    struct MemBlock *tmp = AllocMemBlocksList.lh_first;
+    uint32 tmpSva = tmp->prev_next_info.le_next->sva;
+    while (tmpSva < blockToInsert->sva)
+    {
+        tmp = tmp->prev_next_info.le_next;
+        tmpSva = tmp->prev_next_info.le_next->sva;
+    }
+    blockToInsert->prev_next_info.le_next = tmp->prev_next_info.le_next;
+    tmp->prev_next_info.le_next = blockToInsert;
+    blockToInsert->prev_next_info.le_prev = tmp;
+    ((&(AllocMemBlocksList))->size)++;
+}
+
 void insert_sorted_allocList(struct MemBlock *blockToInsert)
 {
     // TODO: [PROJECT MS1] [DYNAMIC ALLOCATOR] insert_sorted_allocList
     //  Write your code here, remove the panic and write your code
-    panic("insert_sorted_allocList() is not implemented yet...!!");
+    // panic("insert_sorted_allocList() is not implemented yet...!!");
+    void (*insertIntoList_fn_ptr)() = listInsert;
+
+    if (LIST_SIZE(&(AllocMemBlocksList)) == 0)
+        LIST_INSERT_HEAD(&(AllocMemBlocksList), blockToInsert);
+    else
+    {
+        if (LIST_LAST(&(AllocMemBlocksList))->sva < blockToInsert->sva)
+            LIST_INSERT_TAIL(&(AllocMemBlocksList), blockToInsert);
+        else if (LIST_FIRST(&(AllocMemBlocksList))->sva > blockToInsert->sva)
+            LIST_INSERT_HEAD(&(AllocMemBlocksList), blockToInsert);
+        else
+        {
+            insertIntoList_fn_ptr(blockToInsert);
+        }
+    }
 }
 
 //=========================================
@@ -106,7 +136,31 @@ struct MemBlock *alloc_block_FF(uint32 size)
 {
     // TODO: [PROJECT MS1] [DYNAMIC ALLOCATOR] alloc_block_FF
     //  Write your code here, remove the panic and write your code
-    panic("alloc_block_FF() is not implemented yet...!!");
+    // panic("alloc_block_FF() is not implemented yet...!!");
+    struct MemBlock *tmp = FreeMemBlocksList.lh_first;
+    // LIST_FOREACH(tmp,&(FreeMemBlocksList));
+    while (tmp->prev_next_info.le_next != NULL)
+    {
+        if (tmp->size == size)
+        {
+            LIST_REMOVE(&(FreeMemBlocksList), tmp);
+            return tmp;
+        }
+        else if (tmp->size > size)
+        {
+            struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
+            LIST_REMOVE(&AvailableMemBlocksList, newBlock);
+
+            newBlock->size = size;
+            newBlock->sva = tmp->sva;
+            tmp->size -= size;
+            tmp->sva += size;
+            //			LIST_REMOVE(&(FreeMemBlocksList), tmp);
+            return newBlock;
+        }
+        tmp = tmp->prev_next_info.le_next;
+    }
+    return NULL;
 }
 
 //=========================================
