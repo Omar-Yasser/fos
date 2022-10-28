@@ -33,6 +33,7 @@ struct MemBlock_List AllocMemBlocksList ;
 /*Functions*/
 //PROJECT MS#1
 void initialize_MemBlocksList(uint32 numOfBlocks);
+void listInsert(struct MemBlock *blockToInsert, struct MemBlock_List *blockList);
 void insert_sorted_allocList(struct MemBlock *blockToInsert);
 struct MemBlock *find_block(struct MemBlock_List *blockList, uint32 va);
 struct MemBlock *alloc_block_FF(uint32 size);
