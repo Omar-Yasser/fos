@@ -115,19 +115,12 @@ void insert_sorted_allocList(struct MemBlock *blockToInsert)
     // panic("insert_sorted_allocList() is not implemented yet...!!");
     void (*insertIntoList_fn_ptr)() = listInsert;
 
-    if (LIST_SIZE(&(AllocMemBlocksList)) == 0)
+    if (LIST_SIZE(&(AllocMemBlocksList)) == 0 || LIST_FIRST(&(AllocMemBlocksList))->sva > blockToInsert->sva)
         LIST_INSERT_HEAD(&(AllocMemBlocksList), blockToInsert);
+    else if (LIST_LAST(&(AllocMemBlocksList))->sva < blockToInsert->sva)
+        LIST_INSERT_TAIL(&(AllocMemBlocksList), blockToInsert);
     else
-    {
-        if (LIST_LAST(&(AllocMemBlocksList))->sva < blockToInsert->sva)
-            LIST_INSERT_TAIL(&(AllocMemBlocksList), blockToInsert);
-        else if (LIST_FIRST(&(AllocMemBlocksList))->sva > blockToInsert->sva)
-            LIST_INSERT_HEAD(&(AllocMemBlocksList), blockToInsert);
-        else
-        {
-            insertIntoList_fn_ptr(blockToInsert, &AllocMemBlocksList);
-        }
-    }
+        insertIntoList_fn_ptr(blockToInsert, &AllocMemBlocksList);
 }
 
 //=========================================
@@ -246,6 +239,7 @@ void insert_sorted_with_merge_freeList(struct MemBlock *blockToInsert)
         tmp.le_prev->size += blockToInsert->size;
         blockToInsert->size = 0;
         blockToInsert->sva = 0;
+        
         LIST_REMOVE(&(FreeMemBlocksList), blockToInsert);
         LIST_INSERT_HEAD(&(AvailableMemBlocksList), blockToInsert);
         flag = 1;
