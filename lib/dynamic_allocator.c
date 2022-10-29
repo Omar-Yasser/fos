@@ -55,6 +55,8 @@ void print_mem_block_lists()
 //============================ REQUIRED FUNCTIONS ==================================//
 //==================================================================================//
 
+struct MemBlock *last_block = NULL;
+
 //===============================
 // [1] INITIALIZE AVAILABLE LIST:
 //===============================
@@ -145,7 +147,7 @@ struct MemBlock *alloc_block_FF(uint32 size)
         if (tmp->size == size)
         {
             LIST_REMOVE(&(FreeMemBlocksList), tmp);
-            return tmp;
+            return last_block = tmp;
         }
         else if (tmp->size > size)
         {
@@ -156,7 +158,7 @@ struct MemBlock *alloc_block_FF(uint32 size)
             newBlock->sva = tmp->sva;
             tmp->size -= size;
             tmp->sva += size;
-            return newBlock;
+            return last_block = newBlock;
         }
         tmp = tmp->prev_next_info.le_next;
     }
@@ -186,7 +188,7 @@ struct MemBlock *alloc_block_BF(uint32 size)
     if (BF->size == size)
     {
         LIST_REMOVE(&FreeMemBlocksList, BF);
-        return BF;
+        return last_block = BF;
     }
     struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
     LIST_REMOVE(&AvailableMemBlocksList, newBlock);
@@ -194,17 +196,48 @@ struct MemBlock *alloc_block_BF(uint32 size)
     newBlock->sva = BF->sva;
     BF->size -= size;
     BF->sva += size;
-    return newBlock;
+    return last_block = newBlock;
 }
 
 //=========================================
 // [7] ALLOCATE BLOCK BY NEXT FIT:
 //=========================================
+
+struct MemBlock *find_block_NF(uint32 size, uint32 sva) {
+    struct MemBlock *blk;
+    LIST_FOREACH(blk, &FreeMemBlocksList)
+    {   
+        if (blk->sva < sva)
+            continue;
+        if (blk->size == size)
+        {
+            LIST_REMOVE(&FreeMemBlocksList, blk);
+            return last_block = blk;
+        }
+        if (blk->size > size)
+        {
+            struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
+            LIST_REMOVE(&AvailableMemBlocksList, newBlock);
+
+            newBlock->size = size;
+            newBlock->sva = blk->sva;
+            blk->size -= size;
+            blk->sva += size;
+            return last_block = newBlock;
+        }
+    }
+    return NULL;
+}
 struct MemBlock *alloc_block_NF(uint32 size)
 {
     // TODO: [PROJECT MS1 - BONUS] [DYNAMIC ALLOCATOR] alloc_block_NF
     //  Write your code here, remove the panic and write your code
-    panic("alloc_block_NF() is not implemented yet...!!");
+    // panic("alloc_block_NF() is not implemented yet...!!");
+    
+    struct MemBlock* block_NF = find_block_NF(size, (last_block == NULL ? 0 : last_block->sva));
+    if (block_NF == NULL)
+        block_NF = find_block_NF(size, 0);
+    return block_NF;
 }
 
 //===================================================
