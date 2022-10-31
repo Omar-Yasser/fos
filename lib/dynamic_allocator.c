@@ -107,10 +107,10 @@ void insert_block(struct MemBlock *blockToInsert, struct MemBlock_List *blockLis
         {
             blk = blk->prev_next_info.le_next;
         }
-        blockToInsert->prev_next_info.le_next = blk;
-        blockToInsert->prev_next_info.le_prev = blk->prev_next_info.le_prev;
-        blk->prev_next_info.le_prev->prev_next_info.le_next = blockToInsert;
-        blk->prev_next_info.le_prev = blockToInsert;
+        LIST_NEXT(blockToInsert) = blk;
+        LIST_PREV(blockToInsert) = LIST_PREV(blk);
+        LIST_NEXT(LIST_PREV(blk)) = blockToInsert;
+        LIST_PREV(blk) = blockToInsert;
         blockList->size++;
     }
 }
