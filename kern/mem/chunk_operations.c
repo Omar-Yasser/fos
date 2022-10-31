@@ -46,7 +46,7 @@ int copy_paste_chunk(uint32* page_directory, uint32 source_va, uint32 dest_va, u
 //===============================
 //This function should share the given size from dest_va with the source_va
 //Hint: use ROUNDDOWN/ROUNDUP macros to align the addresses
-void share_chunk(uint32* page_directory, uint32 source_va,uint32 dest_va, uint32 size, uint32 perms)
+int share_chunk(uint32* page_directory, uint32 source_va,uint32 dest_va, uint32 size, uint32 perms)
 {
 	//TODO: [PROJECT MS2] [CHUNK OPERATIONS] share_chunk
 	// Write your code here, remove the panic and write your code
@@ -58,7 +58,7 @@ void share_chunk(uint32* page_directory, uint32 source_va,uint32 dest_va, uint32
 //===============================
 //This function should allocate in RAM the given range [va, va+size)
 //Hint: use ROUNDDOWN/ROUNDUP macros to align the addresses
-void allocate_chunk(uint32* page_directory, uint32 va, uint32 size, uint32 perms)
+int allocate_chunk(uint32* page_directory, uint32 va, uint32 size, uint32 perms)
 {
 	//TODO: [PROJECT MS2] [CHUNK OPERATIONS] allocate_chunk
 	// Write your code here, remove the panic and write your code

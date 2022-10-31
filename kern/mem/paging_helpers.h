@@ -11,10 +11,10 @@
 /*[2.1] PAGE TABLE ENTRIES MANIPULATION */
 inline void pt_clear_page_table_entry(uint32* page_directory, uint32 virtual_address);
 inline void pt_set_page_permissions(uint32* page_directory, uint32 virtual_address, uint32 permissions_to_set, uint32 permissions_to_clear);
-inline uint32 pt_get_page_permissions(uint32* page_directory, uint32 virtual_address );
+inline int pt_get_page_permissions(uint32* page_directory, uint32 virtual_address );
 
 /*[2.2] ADDRESS CONVERTION */
-inline uint32 virtual_to_physical(uint32* page_directory, uint32 va);
+inline int virtual_to_physical(uint32* page_directory, uint32 va);
 
 
 /******************************************************************************/

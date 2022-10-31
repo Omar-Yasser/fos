@@ -20,7 +20,7 @@
  int test_kmalloc_firstfit2();
  int test_kmalloc_worstfit();
  int test_kfree();
- int test_kfree_bestfit();
+ int test_kfree_bestfirstfit();
  int test_kheap_phys_addr();
  int test_kheap_virt_addr();
  int test_three_creation_functions();
@@ -31,5 +31,7 @@
  int test_krealloc();
  int test_krealloc_BF();
 
+ //2022
+ int test_initialize_dyn_block_system(int freeFrames_before, int freeDiskFrames_before, int freeFrames_after, int freeDiskFrames_after);
 
 #endif /* KERN_TESTS_TEST_KHEAP_H_ */

@@ -13,7 +13,8 @@
 #define kilo (1024)
 
 //2017
-#define INITIAL_KHEAP_ALLOCATIONS (KERNEL_SHARES_ARR_INIT_SIZE + KERNEL_SEMAPHORES_ARR_INIT_SIZE + ROUNDUP(num_of_ready_queues * sizeof(uint8), PAGE_SIZE) + ROUNDUP(num_of_ready_queues * sizeof(struct Env_Queue), PAGE_SIZE) + ROUNDUP(NUM_OF_KHEAP_PAGES * sizeof(struct MemBlock), PAGE_SIZE))
+#define DYNAMIC_ALLOCATOR_DS ROUNDUP(NUM_OF_KHEAP_PAGES * sizeof(struct MemBlock), PAGE_SIZE)
+#define INITIAL_KHEAP_ALLOCATIONS (DYNAMIC_ALLOCATOR_DS + KERNEL_SHARES_ARR_INIT_SIZE + KERNEL_SEMAPHORES_ARR_INIT_SIZE + ROUNDUP(num_of_ready_queues * sizeof(uint8), PAGE_SIZE) + ROUNDUP(num_of_ready_queues * sizeof(struct Env_Queue), PAGE_SIZE))
 #define ACTUAL_START (KERNEL_HEAP_START + INITIAL_KHEAP_ALLOCATIONS)
 
 extern uint32 sys_calculate_free_frames() ;
@@ -22,6 +23,8 @@ extern uint32 sys_rcr2();
 extern int execute_command(char *command_string);
 
 extern char end_of_kernel[];
+
+extern int CB(uint32 *ptr_dir, uint32 va, int bn);
 
 struct MyStruct
 {
@@ -1336,6 +1339,13 @@ int test_kfree()
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((sys_calculate_free_frames() - freeFrames) != 512 ) panic("Wrong kfree: pages in memory are not freed correctly");
 
+		//kfree 1st 2 KB
+		freeFrames = sys_calculate_free_frames() ;
+		freeDiskFrames = pf_calculate_free_frames() ;
+		kfree(ptr_allocations[2]);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 1 ) panic("Wrong kfree: pages in memory are not freed correctly");
+
 		//kfree 2nd 2 MB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
@@ -1355,14 +1365,6 @@ int test_kfree()
 
 	//Check memory access after kfree [15%]
 	{
-		//2 KB
-		ptr = (char*)ptr_allocations[2];
-		for (i = 0; i < lastIndices[2]; ++i)
-		{
-			sums[2] += ptr[i] ;
-		}
-		if (sums[2] != 2*lastIndices[2])	panic("kfree: invalid read after freeing some allocations");
-
 		//2 KB
 		ptr = (char*)ptr_allocations[3];
 		for (i = 0; i < lastIndices[3]; ++i)
@@ -1426,6 +1428,67 @@ int test_kfree()
 		{
 			ptr[i] = 9 ;
 		}
+
+		if (isKHeapPlacementStrategyNEXTFIT())
+		{
+			//Allocate Remaining MBs
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			uint32 reqAllocatedSpace = KERNEL_HEAP_MAX - (ACTUAL_START + 13*Mega + 52*kilo + 1*Mega);
+			ptr_allocations[10] = kmalloc(reqAllocatedSpace);
+			if ((uint32) ptr_allocations[10] != (ACTUAL_START + 13*Mega + 52*kilo + 1*Mega)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
+			if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((freeFrames - sys_calculate_free_frames()) != reqAllocatedSpace/PAGE_SIZE) panic("Wrong allocation: pages are not loaded successfully into memory");
+			lastIndices[10] = (reqAllocatedSpace)/sizeof(char) - 1;
+			ptr = (char*)ptr_allocations[10];
+//			for (i = 0; i < lastIndices[10]; ++i)
+//			{
+//				ptr[i] = 10;
+//			}
+
+			//Allocate in merged freed space FROM the beginning
+			//3 MB
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			ptr_allocations[11] = kmalloc(3*Mega);
+			if ((uint32) ptr_allocations[11] != (ACTUAL_START)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
+			if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((freeFrames - sys_calculate_free_frames()) != 768) panic("Wrong allocation: pages are not loaded successfully into memory");
+			lastIndices[11] = (3*Mega)/sizeof(char) - 1;
+			ptr = (char*)ptr_allocations[11];
+			for (i = 0; i < lastIndices[11]; ++i)
+			{
+				ptr[i] = 8 ;
+			}
+
+			//2 KB
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			ptr_allocations[12] = kmalloc(2*kilo);
+			if ((uint32) ptr_allocations[12] != (ACTUAL_START + 3*Mega)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
+			if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((freeFrames - sys_calculate_free_frames()) != 1) panic("Wrong allocation: pages are not loaded successfully into memory");
+			lastIndices[12] = (2*kilo)/sizeof(char) - 1;
+			ptr = (char*)ptr_allocations[12];
+			for (i = 0; i < lastIndices[12]; ++i)
+			{
+				ptr[i] = 9 ;
+			}
+
+			//1 MB
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			ptr_allocations[13] = kmalloc(1*Mega);
+			if ((uint32) ptr_allocations[13] != (ACTUAL_START + 3*Mega + 4*kilo)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
+			if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((freeFrames - sys_calculate_free_frames()) != 256) panic("Wrong allocation: pages are not loaded successfully into memory");
+			lastIndices[13] = (1*Mega)/sizeof(char) - 1;
+			ptr = (char*)ptr_allocations[13];
+			for (i = 0; i < lastIndices[13]; ++i)
+			{
+				ptr[i] = 10 ;
+			}
+		}
 	}
 	cprintf("\b\b\b45%");
 
@@ -1444,13 +1507,6 @@ int test_kfree()
 		kfree(ptr_allocations[5]);
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((sys_calculate_free_frames() - freeFrames) != 3*Mega/4096) panic("Wrong kfree: pages in memory are not freed correctly");
-
-		//kfree 1st 2 KB
-		freeFrames = sys_calculate_free_frames() ;
-		freeDiskFrames = pf_calculate_free_frames() ;
-		kfree(ptr_allocations[2]);
-		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
-		if ((sys_calculate_free_frames() - freeFrames) != 1) panic("Wrong kfree: pages in memory are not freed correctly");
 
 		//kfree 2nd 2 KB
 		freeFrames = sys_calculate_free_frames() ;
@@ -1480,6 +1536,39 @@ int test_kfree()
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((sys_calculate_free_frames() - freeFrames) != 256) panic("Wrong kfree: pages in memory are not freed correctly");
 
+		if (isKHeapPlacementStrategyNEXTFIT())
+		{
+			//cprintf("FREE in NEXT FIT\n");
+			//kfree Remaining MBs
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			kfree(ptr_allocations[10]);
+			uint32 reqAllocatedSpace = KERNEL_HEAP_MAX - (ACTUAL_START + 13*Mega + 52*kilo + 1*Mega);
+			if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((sys_calculate_free_frames() - freeFrames) != reqAllocatedSpace/PAGE_SIZE) panic("Wrong kfree: pages in memory are not freed correctly");
+
+			//kfree 3 MB
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			kfree(ptr_allocations[11]);
+			if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((sys_calculate_free_frames() - freeFrames) != 3*Mega/4096) panic("Wrong kfree: pages in memory are not freed correctly");
+
+			//kfree 2 KB
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			kfree(ptr_allocations[12]);
+			if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((sys_calculate_free_frames() - freeFrames) != 1) panic("Wrong kfree: pages in memory are not freed correctly");
+
+			//kfree 1 MB
+			freeFrames = sys_calculate_free_frames() ;
+			freeDiskFrames = pf_calculate_free_frames() ;
+			kfree(ptr_allocations[13]);
+			if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+			if ((sys_calculate_free_frames() - freeFrames) != 1*Mega/4096) panic("Wrong kfree: pages in memory are not freed correctly");
+
+		}
 		if(start_freeFrames != (sys_calculate_free_frames())) {panic("Wrong kfree: not all pages removed correctly at end");}
 	}
 	cprintf("\b\b\b60%");
@@ -1551,6 +1640,7 @@ int test_kfree()
 			}
 		}
 	}
+
 	cprintf("\b\b\b100%\n");
 
 
@@ -1561,7 +1651,7 @@ int test_kfree()
 
 }
 
-int test_kfree_bestfit()
+int test_kfree_bestfirstfit()
 {
 	cprintf("==============================================\n");
 	cprintf("MAKE SURE to have a FRESH RUN for this test\n(i.e. don't run any program/test before it)\n");
@@ -1695,6 +1785,13 @@ int test_kfree_bestfit()
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((sys_calculate_free_frames() - freeFrames) != 512 ) panic("Wrong kfree: pages in memory are not freed correctly");
 
+		//kfree 1st 2 KB
+		freeFrames = sys_calculate_free_frames() ;
+		freeDiskFrames = pf_calculate_free_frames() ;
+		kfree(ptr_allocations[2]);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 1 ) panic("Wrong kfree: pages in memory are not freed correctly");
+
 		//kfree 2nd 2 MB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
@@ -1714,14 +1811,6 @@ int test_kfree_bestfit()
 
 	//Check memory access after kfree [15%]
 	{
-		//2 KB
-		ptr = (char*)ptr_allocations[2];
-		for (i = 0; i < lastIndices[2]; ++i)
-		{
-			sums[2] += ptr[i] ;
-		}
-		if (sums[2] != 2*lastIndices[2])	panic("kfree: invalid read after freeing some allocations");
-
 		//2 KB
 		ptr = (char*)ptr_allocations[3];
 		for (i = 0; i < lastIndices[3]; ++i)
@@ -1758,32 +1847,47 @@ int test_kfree_bestfit()
 
 	//Allocate after kfree [15%]
 	{
-		//20 KB
+		//Allocate in merged freed space
+		//3 MB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
-		ptr_allocations[8] = kmalloc(20*kilo);
+		ptr_allocations[8] = kmalloc(3*Mega);
 		if ((uint32) ptr_allocations[8] != (ACTUAL_START)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
 		if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
-		if ((freeFrames - sys_calculate_free_frames()) != 5) panic("Wrong allocation: pages are not loaded successfully into memory");
-		lastIndices[8] = (20*kilo)/sizeof(char) - 1;
+		if ((freeFrames - sys_calculate_free_frames()) != 768) panic("Wrong allocation: pages are not loaded successfully into memory");
+		lastIndices[8] = (3*Mega)/sizeof(char) - 1;
 		ptr = (char*)ptr_allocations[8];
 		for (i = 0; i < lastIndices[8]; ++i)
 		{
 			ptr[i] = 8 ;
 		}
 
-		//1 MB
+		//2 KB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
-		ptr_allocations[9] = kmalloc(1*Mega);
-		if ((uint32) ptr_allocations[9] != (ACTUAL_START + 20*kilo)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
+		ptr_allocations[9] = kmalloc(2*kilo);
+		if ((uint32) ptr_allocations[9] != (ACTUAL_START + 3*Mega)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
 		if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
-		if ((freeFrames - sys_calculate_free_frames()) != 256) panic("Wrong allocation: pages are not loaded successfully into memory");
-		lastIndices[9] = (1*Mega)/sizeof(char) - 1;
+		if ((freeFrames - sys_calculate_free_frames()) != 1) panic("Wrong allocation: pages are not loaded successfully into memory");
+		lastIndices[9] = (2*kilo)/sizeof(char) - 1;
 		ptr = (char*)ptr_allocations[9];
 		for (i = 0; i < lastIndices[9]; ++i)
 		{
 			ptr[i] = 9 ;
+		}
+
+		//1 MB
+		freeFrames = sys_calculate_free_frames() ;
+		freeDiskFrames = pf_calculate_free_frames() ;
+		ptr_allocations[10] = kmalloc(1*Mega);
+		if ((uint32) ptr_allocations[10] != (ACTUAL_START + 3*Mega + 4*kilo)) panic("Wrong start address for the allocated space... check return address of kmalloc & updating of heap ptr");
+		if ((pf_calculate_free_frames() - freeDiskFrames) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((freeFrames - sys_calculate_free_frames()) != 256) panic("Wrong allocation: pages are not loaded successfully into memory");
+		lastIndices[10] = (1*Mega)/sizeof(char) - 1;
+		ptr = (char*)ptr_allocations[10];
+		for (i = 0; i < lastIndices[10]; ++i)
+		{
+			ptr[i] = 10 ;
 		}
 	}
 	cprintf("\b\b\b45%");
@@ -1804,13 +1908,6 @@ int test_kfree_bestfit()
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((sys_calculate_free_frames() - freeFrames) != 3*Mega/4096) panic("Wrong kfree: pages in memory are not freed correctly");
 
-		//kfree 1st 2 KB
-		freeFrames = sys_calculate_free_frames() ;
-		freeDiskFrames = pf_calculate_free_frames() ;
-		kfree(ptr_allocations[2]);
-		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
-		if ((sys_calculate_free_frames() - freeFrames) != 1) panic("Wrong kfree: pages in memory are not freed correctly");
-
 		//kfree 2nd 2 KB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
@@ -1825,19 +1922,26 @@ int test_kfree_bestfit()
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
 		if ((sys_calculate_free_frames() - freeFrames) != 4) panic("Wrong kfree: pages in memory are not freed correctly");
 
-		//kfree 20 KB
+		//kfree 3 MB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
 		kfree(ptr_allocations[8]);
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
-		if ((sys_calculate_free_frames() - freeFrames) != 5) panic("Wrong kfree: pages in memory are not freed correctly");
+		if ((sys_calculate_free_frames() - freeFrames) != 3*Mega/4096) panic("Wrong kfree: pages in memory are not freed correctly");
 
-		//kfree 1 MB
+		//kfree 2 KB
 		freeFrames = sys_calculate_free_frames() ;
 		freeDiskFrames = pf_calculate_free_frames() ;
 		kfree(ptr_allocations[9]);
 		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
-		if ((sys_calculate_free_frames() - freeFrames) != 256) panic("Wrong kfree: pages in memory are not freed correctly");
+		if ((sys_calculate_free_frames() - freeFrames) != 1) panic("Wrong kfree: pages in memory are not freed correctly");
+
+		//kfree 1 MB
+		freeFrames = sys_calculate_free_frames() ;
+		freeDiskFrames = pf_calculate_free_frames() ;
+		kfree(ptr_allocations[10]);
+		if ((freeDiskFrames - pf_calculate_free_frames()) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+		if ((sys_calculate_free_frames() - freeFrames) != 1*Mega/4096) panic("Wrong kfree: pages in memory are not freed correctly");
 
 		if(start_freeFrames != (sys_calculate_free_frames())) {panic("Wrong kfree: not all pages removed correctly at end");}
 	}
@@ -2018,27 +2122,28 @@ int test_kheap_phys_addr()
 		uint32 endVA = ACTUAL_START + 13*Mega + 32*kilo;
 		uint32 allPAs[(13*Mega + 32*kilo+INITIAL_KHEAP_ALLOCATIONS)/PAGE_SIZE] ;
 		i = 0;
-		for (va = KERNEL_HEAP_START; va < endVA; va+=PAGE_SIZE)
+		for (va = (KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS); va < endVA; va+=PAGE_SIZE)
 		{
 			allPAs[i++] = kheap_physical_address(va);
 		}
 		int ii = i ;
 		i = 0;
 		int j;
-		for (va = KERNEL_HEAP_START; va < endVA; va+=PTSIZE)
+		for (va = (KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS); va < endVA; )
 		{
 			uint32 *ptr_table ;
 			get_page_table(ptr_page_directory, va, &ptr_table);
 			if (ptr_table == NULL)
 				panic("one of the kernel tables is wrongly removed! Tables of Kernel Heap should not be removed");
 
-			for (j = 0; i < ii && j < 1024; ++j, ++i)
+			for (j = PTX(va); i < ii && j < 1024; ++j, ++i)
 			{
 				if ((ptr_table[j] & 0xFFFFF000) != allPAs[i])
 				{
 					//cprintf("\nVA = %x, table entry = %x, khep_pa = %x\n",va + j*PAGE_SIZE, (ptr_table[j] & 0xFFFFF000) , allPAs[i]);
 					panic("Wrong kheap_physical_address");
 				}
+				va+=PAGE_SIZE;
 			}
 		}
 	}
@@ -2075,27 +2180,28 @@ int test_kheap_phys_addr()
 		uint32 endVA = ACTUAL_START + 13*Mega + 32*kilo;
 		uint32 allPAs[(13*Mega + 32*kilo+INITIAL_KHEAP_ALLOCATIONS)/PAGE_SIZE] ;
 		i = 0;
-		for (va = KERNEL_HEAP_START; va < endVA; va+=PAGE_SIZE)
+		for (va = (KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS); va < endVA; va+=PAGE_SIZE)
 		{
 			allPAs[i++] = kheap_physical_address(va);
 		}
 		int ii = i ;
 		i = 0;
 		int j;
-		for (va = KERNEL_HEAP_START; va < endVA; va+=PTSIZE)
+		for (va = (KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS); va < endVA; )
 		{
 			uint32 *ptr_table ;
 			get_page_table(ptr_page_directory, va, &ptr_table);
 			if (ptr_table == NULL)
 				panic("one of the kernel tables is wrongly removed! Tables of Kernel Heap should not be removed");
 
-			for (j = 0; i < ii && j < 1024; ++j, ++i)
+			for (j = PTX(va); i < ii && j < 1024; ++j, ++i)
 			{
 				if ((ptr_table[j] & 0xFFFFF000) != allPAs[i])
 				{
 					//cprintf("\nVA = %x, table entry = %x, khep_pa = %x\n",va + j*PAGE_SIZE, (ptr_table[j] & 0xFFFFF000) , allPAs[i]);
 					panic("Wrong kheap_physical_address");
 				}
+				va += PAGE_SIZE;
 			}
 		}
 	}
@@ -2237,8 +2343,8 @@ int test_kheap_virt_addr()
 		if ((freeFrames - sys_calculate_free_frames()) != 4) panic("Wrong allocation: pages are not loaded successfully into memory");
 	}
 
-	uint32 allPAs[(13*Mega + 32*kilo+ INITIAL_KHEAP_ALLOCATIONS)/PAGE_SIZE] ;
-	int numOfFrames = (13*Mega + 32*kilo+INITIAL_KHEAP_ALLOCATIONS)/PAGE_SIZE ;
+	uint32 allPAs[(13*Mega + 32*kilo+ (INITIAL_KHEAP_ALLOCATIONS-DYNAMIC_ALLOCATOR_DS))/PAGE_SIZE] ;
+	int numOfFrames = (13*Mega + 32*kilo+(INITIAL_KHEAP_ALLOCATIONS-DYNAMIC_ALLOCATOR_DS))/PAGE_SIZE ;
 
 	//test kheap_virtual_address after kmalloc only [40%]
 	{
@@ -2246,23 +2352,24 @@ int test_kheap_virt_addr()
 		uint32 endVA = ACTUAL_START + 13*Mega + 32*kilo;
 		int i = 0;
 		int j;
-		for (va = KERNEL_HEAP_START; va < endVA; va+=PTSIZE)
+		for (va = (KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS); va < endVA; )
 		{
 			uint32 *ptr_table ;
 			get_page_table(ptr_page_directory, va, &ptr_table);
 			if (ptr_table == NULL)
 				panic("one of the kernel tables is wrongly removed! Tables of Kernel Heap should not be removed");
 
-			for (j = 0; i < numOfFrames && j < 1024; ++j, ++i)
+			for (j = PTX(va); i < numOfFrames && j < 1024; ++j, ++i)
 			{
 				allPAs[i] = (ptr_table[j] & 0xFFFFF000);
 				uint32 retrievedVA = kheap_virtual_address(allPAs[i]);
-
-				if (retrievedVA != (va + j*PAGE_SIZE))
+				//cprintf("va to check = %x\n", va);
+				if (retrievedVA != (va))
 				{
-					//cprintf("\nVA = %x, table entry = %x, khep_pa = %x\n",va + j*PAGE_SIZE, (ptr_table[j] & 0xFFFFF000) , allPAs[i]);
+					cprintf("\nretrievedVA = %x, Actual VA = %x, table entry = %x, khep_pa = %x\n",retrievedVA, va + j*PAGE_SIZE, (ptr_table[j] & 0xFFFFF000) , allPAs[i]);
 					panic("Wrong kheap_virtual_address");
 				}
+				va+=PAGE_SIZE;
 			}
 		}
 	}
@@ -2300,7 +2407,7 @@ int test_kheap_virt_addr()
 		int i = 0;
 		int j;
 		//frames of first 4 MB
-		uint32 startIndex = (INITIAL_KHEAP_ALLOCATIONS) / PAGE_SIZE;
+		uint32 startIndex = (INITIAL_KHEAP_ALLOCATIONS - DYNAMIC_ALLOCATOR_DS) / PAGE_SIZE;
 		for (i = startIndex ; i < startIndex + 4*Mega/PAGE_SIZE; ++i)
 		{
 			uint32 retrievedVA = kheap_virtual_address(allPAs[i]);
@@ -2314,7 +2421,7 @@ int test_kheap_virt_addr()
 		for (i = startIndex + 4*Mega/PAGE_SIZE; i < startIndex + (7*Mega + 16*kilo)/PAGE_SIZE; ++i)
 		{
 			uint32 retrievedVA = kheap_virtual_address(allPAs[i]);
-			if (retrievedVA != KERNEL_HEAP_START + i*PAGE_SIZE)
+			if (retrievedVA != KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS + i*PAGE_SIZE)
 			{
 				panic("Wrong kheap_virtual_address");
 			}
@@ -2332,7 +2439,7 @@ int test_kheap_virt_addr()
 		for (i = startIndex + (13*Mega + 16*kilo)/PAGE_SIZE; i < startIndex + (13*Mega + 32*kilo)/PAGE_SIZE; ++i)
 		{
 			uint32 retrievedVA = kheap_virtual_address(allPAs[i]);
-			if (retrievedVA != KERNEL_HEAP_START + i*PAGE_SIZE)
+			if (retrievedVA != KERNEL_HEAP_START + DYNAMIC_ALLOCATOR_DS + i*PAGE_SIZE)
 			{
 				panic("Wrong kheap_virtual_address");
 			}
@@ -4643,8 +4750,7 @@ int test_krealloc_BF() {
     {
 		//Reallocate 2nd 1 MB to 1 MB + 7 KB
 		freeFrames = sys_calculate_free_frames();
-		newAddress = krealloc(ptr_allocations[1],
-				(1 * Mega - kilo) + (7 * kilo));
+		newAddress = krealloc(ptr_allocations[1], (1 * Mega - kilo) + (7 * kilo));
 		if ((uint32) newAddress < (KERNEL_HEAP_START))
 			panic("krealloc: Wrong start address for the allocated space... ");
 		if (newAddress != ptr_allocations[1])
@@ -4695,26 +4801,22 @@ int test_krealloc_BF() {
 		if ((uint32) newAddress < (KERNEL_HEAP_START))
 			panic("krealloc: Wrong start address for the allocated space... ");
 		if (newAddress == ptr_allocations[6])
-			panic(
-					"Wrong allocation: krealloc reallocated at the same address while there is NO sufficient space after it (it should return new VA)");
-		if ((uint32)newAddress != ACTUAL_START + 4 * Mega)
-					panic("krealloc: Wrong start address for allocated space");
+			panic("Wrong allocation: krealloc reallocated at the same address while there is NO sufficient space after it (it should return new VA)");
+		if ((uint32)newAddress != ACTUAL_START + 4 * Mega) panic("krealloc: Wrong start address for allocated space");
 
 		//1 MB only for the new size
 		if (freeFrames - sys_calculate_free_frames() != 256)
 			panic("krealloc: pages in memory are not loaded correctly");
 		ptr_allocations[6] = newAddress;
 		//Reallocate 1st 3 MB (already reallocated to 4 MB) to 20 MB. It should return new VA
-
 		freeFrames = sys_calculate_free_frames();
 		newAddress = krealloc(ptr_allocations[6], (20 * Mega - kilo));
 		if ((uint32) newAddress < (KERNEL_HEAP_START))
 			panic("krealloc: Wrong start address for the allocated space... ");
 		if (newAddress == ptr_allocations[6])
-			panic(
-					"Wrong allocation: krealloc reallocated at the same address while there is NO sufficient space after it (it should return new VA)");
+			panic("Wrong allocation: krealloc reallocated at the same address while there is NO sufficient space after it (it should return new VA)");
 		if ((uint32) newAddress != ACTUAL_START + (21 * Mega))
-			panic("krealloc: Wrong start address for reallocated space");
+			panic("krealloc: Wrong start address for reallocated space\n");
 		//3 MB only for the new size
 		if (freeFrames - sys_calculate_free_frames() != (16 * Mega) / PAGE_SIZE)
 			panic("krealloc: pages in memory are not loaded correctly");
@@ -4802,5 +4904,67 @@ int test_krealloc_BF() {
 	cprintf("\b\b\b100%\n");
 
 	cprintf("\nCongratulations!! test krealloc BF completed successfully.\n");
+	return 0;
+}
+
+//2022
+int test_initialize_dyn_block_system(int freeFrames_before, int freeDiskFrames_before, int freeFrames_after, int freeDiskFrames_after)
+{
+	if(USE_KHEAP != 1)
+		panic("USE_KHEAP = 0 & it shall be 1. Go to 'inc/memlayout.h' and set USE_KHEAP by 1. Then, repeat the test again.");
+	if(STATIC_MEMBLOCK_ALLOC != 0)
+		panic("STATIC_MEMBLOCK_ALLOC = 1 & it shall be 0. Go to 'inc/dynamic_allocator.h' and set STATIC_MEMBLOCK_ALLOC by 0. Then, repeat the test again.");
+
+	//Check MAX_MEM_BLOCK_CNT
+	if(MAX_MEM_BLOCK_CNT != ((0xFFFFF000-0xF6000000)/4096))
+	{
+		panic("Wrong initialize: MAX_MEM_BLOCK_CNT is not set with the correct size of the array");
+	}
+
+	//Check number of nodes in AvailableMemBlocksList
+	if (LIST_SIZE(&(AvailableMemBlocksList)) != MAX_MEM_BLOCK_CNT-1)
+	{
+		panic("Wrong initialize: Wrong size for the AvailableMemBlocksList");
+	}
+
+	//Check number of nodes in AllocMemBlocksList
+	if (LIST_SIZE(&(AllocMemBlocksList)) != 0)
+	{
+		panic("Wrong initialize: Wrong size for the AllocMemBlocksList");
+	}
+
+	//Check number of nodes in FreeMemBlocksList
+	if (LIST_SIZE(&(FreeMemBlocksList)) != 1)
+	{
+		panic("Wrong initialize: Wrong size for the FreeMemBlocksList");
+	}
+
+	//Check content of FreeMemBlocksList
+	struct MemBlock* block = LIST_FIRST(&FreeMemBlocksList);
+	if(block == NULL || block->size != (KERNEL_HEAP_MAX-0xF6000000-DYNAMIC_ALLOCATOR_DS) || block->sva != 0xF6000000+DYNAMIC_ALLOCATOR_DS)
+	{
+		panic("Wrong initialize: Wrong content for the FreeMemBlocksList.");
+	}
+
+	//Check number of disk and memory frames
+	if ((freeDiskFrames_after - freeDiskFrames_before) != 0) panic("Page file is changed while it's not expected to. (pages are wrongly allocated/de-allocated in PageFile)");
+	if ((freeFrames_before - freeFrames_after) != 160) panic("Wrong allocation: pages are not loaded successfully into memory %d", (freeFrames_before - freeFrames_after));
+
+	//Checking permissions on the allocated spaces
+	{
+		uint32 a = 0xF6000000;
+		while(1)
+		{
+			if (CB(ptr_page_directory, a, 0)!=1 || CB(ptr_page_directory, a, 1)!=1 || CB(ptr_page_directory, a, 2)!=0)
+				panic("Wrong initialize: Wrong permissions - pages mapped with wrong permissions. Check them again.");
+
+			a+=4096;
+			if(a == (0xF6000000+DYNAMIC_ALLOCATOR_DS))
+				break;
+		}
+	}
+
+	//===============================================//
+	cprintf("\nCongratulations!! test initialize_dyn_block_system of KHEAP completed successfully.\n");
 	return 0;
 }

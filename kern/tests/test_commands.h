@@ -20,5 +20,20 @@
 
 int TestAutoCompleteCommand();
 
+//Testing Chunks Manipulation functions
+int test_cut_paste_pages();
+int test_copy_paste_chunk();
+int test_share_chunk();
+int test_allocate_chunk();
+int test_calculate_required_frames();
+int test_calculate_allocated_space();
+
+//Testing Paging Helpers functions
+int test_pt_set_page_permissions();
+int test_pt_set_page_permissions_invalid_va();
+int test_pt_get_page_permissions();
+int test_pt_clear_page_table_entry();
+int test_pt_clear_page_table_entry_invalid_va();
+int test_virtual_to_physical();
 
 #endif /* KERN_TESTS_TEST_COMMANDS_H_ */

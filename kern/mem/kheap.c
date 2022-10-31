@@ -14,15 +14,19 @@ void initialize_dyn_block_system()
 {
 	//TODO: [PROJECT MS2] [KERNEL HEAP] initialize_dyn_block_system
 	// your code is here, remove the panic and write your code
-	panic("initialize_dyn_block_system() is not implemented yet...!!");
+	kpanic_into_prompt("initialize_dyn_block_system() is not implemented yet...!!");
 
 	//[1] Initialize two lists (AllocMemBlocksList & FreeMemBlocksList) [Hint: use LIST_INIT()]
+#if STATIC_MEMBLOCK_ALLOC
+	//DO NOTHING
+#else
 	/*[2] Dynamically allocate the array of MemBlockNodes
 	 * 	remember to:
 	 * 		1. set MAX_MEM_BLOCK_CNT with the chosen size of the array
 	 * 		2. allocation should be aligned on PAGE boundary
 	 * 	HINT: can use alloc_chunk(...) function
 	 */
+#endif
 	//[3] Initialize AvailableMemBlocksList by filling it with the MemBlockNodes
 	//[4] Insert a new MemBlock with the remaining heap size into the FreeMemBlocksList
 }
@@ -31,7 +35,7 @@ void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT MS2] [KERNEL HEAP] kmalloc
 	// your code is here, remove the panic and write your code
-	panic("kmalloc() is not implemented yet...!!");
+	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	//NOTE: All kernel heap allocations are multiples of PAGE_SIZE (4KB)
 	//refer to the project presentation and documentation for details

@@ -20,7 +20,10 @@
 #include <kern/mem/memory_manager.h>
 #include <kern/mem/shared_memory_manager.h>
 #include <kern/tests/utilities.h>
+#include <kern/tests/test_kheap.h>
+#include <kern/disk/pagefile_manager.h>
 
+extern int sys_calculate_free_frames();
 
 //Functions Declaration
 //======================
@@ -60,7 +63,12 @@ void FOS_initialize()
 #if USE_KHEAP
 	//2022:
 	{
+		int freeFrames_before = sys_calculate_free_frames() ;
+		int freeDiskFrames_before = pf_calculate_free_frames() ;
 		initialize_dyn_block_system();
+		int freeFrames_after = sys_calculate_free_frames() ;
+		int freeDiskFrames_after = pf_calculate_free_frames() ;
+		test_initialize_dyn_block_system(freeFrames_before, freeDiskFrames_before, freeFrames_after, freeDiskFrames_after);
 	}
 	MAX_SHARES = (KERNEL_SHARES_ARR_INIT_SIZE) / sizeof(struct Share);
 	MAX_SEMAPHORES = (KERNEL_SEMAPHORES_ARR_INIT_SIZE) / sizeof(struct Semaphore);
