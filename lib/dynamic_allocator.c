@@ -231,8 +231,8 @@ void insert_sorted_with_merge_freeList(struct MemBlock *blockToInsert)
     //  Write your code here, remove the panic and write your code
     // panic("insert_sorted_with_merge_freeList() is not implemented yet...!!");
     insert_block(blockToInsert, &FreeMemBlocksList);
-    merge_freeList(blockToInsert, blockToInsert->prev_next_info.le_next);
-    merge_freeList(blockToInsert->prev_next_info.le_prev, blockToInsert);
+    merge_freeList(blockToInsert, LIST_NEXT(blockToInsert));
+    merge_freeList(LIST_PREV(blockToInsert), blockToInsert);
 
     // cprintf("\nAFTER INSERT with MERGE:\n=====================\n");
     // print_mem_block_lists();
