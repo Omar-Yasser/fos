@@ -20,6 +20,7 @@ extern struct Env* env_create(char* user_program_name, unsigned int page_WS_size
 #define CHK_ALLOC			3
 
 void ClearUserSpace(uint32 *ptr_dir);
+int CE(uint32 *ptr_dir, uint32 va);
 uint32 GP(uint32 *ptr_dir, uint32 va);
 int CB(uint32 *ptr_dir, uint32 va, int bn);
 int SB(uint32 *ptr_dir, uint32 va, int bn , int v);
@@ -158,7 +159,7 @@ int test_pt_set_page_permissions_invalid_va()
 	uint32 permissions_to_set = PERM_PRESENT;
 	uint32 permissions_to_clear = 0;
 	pt_set_page_permissions(ptr_page_directory, va, permissions_to_set, permissions_to_clear);
-	panic("This test shall panic with your error message. Check handling setting permissions of an invalid virtual address with non existing page table.");
+	panic("WRONG PANIC - This test shall panic with your error message. Check handling setting permissions of an invalid virtual address with non existing page table.");
 	return 0;
 }
 
@@ -215,8 +216,7 @@ int test_pt_clear_page_table_entry()
 {
 	uint32 va = 0xF1000000;
 	pt_clear_page_table_entry(ptr_page_directory, va);
-
-	int ret = CP(ptr_page_directory, va, 0, 0);
+	int ret = CE(ptr_page_directory, va);
 	if (ret != 1)
 	{
 		panic("[EVAL] #1 Clear Page Table Entry Failed.\n");
@@ -224,8 +224,7 @@ int test_pt_clear_page_table_entry()
 
 	va = 0xF0001000;
 	pt_clear_page_table_entry(ptr_page_directory, va);
-
-	ret = CP(ptr_page_directory, va, 0, 0);
+	ret = CE(ptr_page_directory, va);
 	if (ret != 1)
 	{
 		panic("[EVAL] #2 Clear Page Table Entry Failed.\n");
@@ -233,8 +232,7 @@ int test_pt_clear_page_table_entry()
 
 	va = 0xEF800000;
 	pt_clear_page_table_entry(ptr_page_directory, va);
-
-	ret = CP(ptr_page_directory, va, 0, 0);
+	ret = CE(ptr_page_directory, va);
 	if (ret != 1)
 	{
 		panic("[EVAL] #3 Clear Page Table Entry Failed.\n");
@@ -242,8 +240,7 @@ int test_pt_clear_page_table_entry()
 
 	va = 0xF0000000;
 	pt_clear_page_table_entry(ptr_page_directory, va);
-
-	ret = CP(ptr_page_directory, va, 0, 0);
+	ret = CE(ptr_page_directory, va);
 	if (ret != 1)
 	{
 		panic("[EVAL] #4 Clear Page Table Entry Failed.\n");
@@ -257,7 +254,7 @@ int test_pt_clear_page_table_entry_invalid_va()
 {
 	uint32 va = 0x1000;
 	pt_clear_page_table_entry(ptr_page_directory, va);
-	panic("This test shall panic with your error message. Check handling clearing the entry of an invalid virtual address non existing page table.");
+	panic("WRONG PANIC - This test shall panic with your error message. Check handling clearing the entry of an invalid virtual address non existing page table.");
 	return 0;
 }
 
@@ -2025,6 +2022,14 @@ int CA(uint32 *ptr_dir, uint32 va)
 	if (!(ptr_dir[((((uint32) (va)) >> 22) & 0x3FF)] & 1)) return 0;
 	uint32 *table = (STATIC_KERNEL_VIRTUAL_ADDRESS(ptr_dir[((((uint32) (va)) >> 22) & 0x3FF)] & ~0xFFF));
 	return table[((((uint32) (va)) >> 12) & 0x3FF)]&~0x00000FFF;
+}
+
+int CE(uint32 *_d, uint32 va)
+{
+	if (!(_d[((((uint32) (va)) >> 22) & 0x3FF)] & 1)) return 0;
+	uint32 *_t = (STATIC_KERNEL_VIRTUAL_ADDRESS(_d[((((uint32) (va)) >> 22) & 0x3FF)] & ~0xFFF));
+	if ((_t[((((uint32) (va)) >> 12) & 0x3FF)])!=0) return 0;
+	return 1;
 }
 
 int CP(uint32* pd, uint32 va, uint32 ps, uint32 pc)
