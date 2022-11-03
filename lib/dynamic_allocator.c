@@ -184,14 +184,12 @@ struct MemBlock *alloc_block_BF(uint32 size)
 //=========================================
 // [7] ALLOCATE BLOCK BY NEXT FIT:
 //=========================================
-struct MemBlock *find_block_NF(uint32 size, uint32 sva)
+struct MemBlock *find_block_NF(struct MemBlock *start, struct MemBlock *end, uint32 size)
 {
-    struct MemBlock *blk;
-    LIST_FOREACH(blk, &FreeMemBlocksList)
-    {
-        if (blk->sva < sva || blk->size < size)
-            continue;
-        return lastAllocBlk = divide_block(blk, size);
+    while (start != end) {
+        if (start->size >= size) 
+            return lastAllocBlk = divide_block(start, size);
+        start = LIST_NEXT(start);
     }
     return NULL;
 }
@@ -200,9 +198,9 @@ struct MemBlock *alloc_block_NF(uint32 size)
     // TODO: [PROJECT MS1 - BONUS] [DYNAMIC ALLOCATOR] alloc_block_NF
     //  Write your code here, remove the panic and write your code
     // panic("alloc_block_NF() is not implemented yet...!!");
-    struct MemBlock *block_NF = find_block_NF(size, (lastAllocBlk == NULL ? 0 : lastAllocBlk->sva));
-    if (block_NF == NULL)
-        block_NF = find_block_NF(size, 0);
+    struct MemBlock *block_NF = find_block_NF((lastAllocBlk == NULL ? LIST_FIRST(&FreeMemBlocksList) : LIST_NEXT(lastAllocBlk)), NULL, size);
+    if (block_NF == NULL && lastAllocBlk != NULL)
+        block_NF = find_block_NF(LIST_FIRST(&FreeMemBlocksList), lastAllocBlk, size);
     return block_NF;
 }
 
