@@ -16,9 +16,8 @@ inline void pt_set_page_permissions(uint32 *page_directory, uint32 virtual_addre
 	int ret = get_page_table(page_directory, virtual_address, &ptr_page_table);
 	if (ret == TABLE_IN_MEMORY)
 	{
-		uint32 *ptr_page_entry = &ptr_page_table[PTX(virtual_address)];
-		*ptr_page_entry |= permissions_to_set;
-		*ptr_page_entry &= ~permissions_to_clear;
+		ptr_page_table[PTX(virtual_address)] |= permissions_to_set;
+		ptr_page_table[PTX(virtual_address)] &= ~permissions_to_clear;
 		tlb_invalidate((void *)NULL, (void *)virtual_address);
 		return;
 	}
@@ -32,11 +31,7 @@ inline int pt_get_page_permissions(uint32 *page_directory, uint32 virtual_addres
 	//  panic("pt_get_page_permissions() is not implemented yet...!!");
 	uint32 *ptr_page_table = NULL;
 	int ret = get_page_table(page_directory, virtual_address, &ptr_page_table);
-	if (ret == TABLE_IN_MEMORY)
-	{
-		uint32 page_permissions = ptr_page_table[PTX(virtual_address)] & 0xFFF;
-		return page_permissions;
-	}
+	if (ret == TABLE_IN_MEMORY) return ptr_page_table[PTX(virtual_address)] & 0xFFF;
 	return -1;
 }
 
@@ -49,8 +44,7 @@ inline void pt_clear_page_table_entry(uint32 *page_directory, uint32 virtual_add
 	int ret = get_page_table(page_directory, virtual_address, &ptr_page_table);
 	if (ret == TABLE_IN_MEMORY)
 	{
-		uint32 *ptr_page_entry = &ptr_page_table[PTX(virtual_address)];
-		*ptr_page_entry = 0;
+		ptr_page_table[PTX(virtual_address)] = 0;
 		tlb_invalidate((void *)NULL, (void *)virtual_address);
 		return;
 	}
@@ -65,14 +59,10 @@ inline int virtual_to_physical(uint32 *page_directory, uint32 virtual_address)
 	// TODO: [PROJECT MS2] [PAGING HELPERS] virtual_to_physical
 	//  Write your code here, remove the panic and write your code
 	//  panic("virtual_to_physical() is not implemented yet...!!");
-	 uint32 *ptr_page_table = NULL;
-	 int ret = get_page_table(page_directory, virtual_address, &ptr_page_table);
-	 if(ret == TABLE_IN_MEMORY)
-	 {
-	 	uint32 physical_address = ptr_page_table[PTX(virtual_address)] & ~0xFFF;
-	 	return physical_address;
-	 }
-	 return -1;
+	uint32 *ptr_page_table = NULL;
+	int ret = get_page_table(page_directory, virtual_address, &ptr_page_table);
+	if (ret == TABLE_IN_MEMORY) return ptr_page_table[PTX(virtual_address)] & ~0xFFF;
+	return -1;
 }
 
 /***********************************************************************************************/
