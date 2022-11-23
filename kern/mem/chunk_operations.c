@@ -73,7 +73,24 @@ void calculate_allocated_space(uint32* page_directory, uint32 sva, uint32 eva, u
 {
 	//TODO: [PROJECT MS2 - BONUS] [CHUNK OPERATIONS] calculate_allocated_space
 	// Write your code here, remove the panic and write your code
-	panic("calculate_allocated_space() is not implemented yet...!!");
+	// panic("calculate_allocated_space() is not implemented yet...!!");
+	uint32 *ptr_last_located_page_table = NULL;
+	sva = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(eva, PAGE_SIZE), *num_tables = 0, *num_pages = 0;
+	while(sva < eva)
+	{
+		uint32 *ptr_page_table_source = NULL;
+		int ret = get_page_table(page_directory, sva, &ptr_page_table_source);
+		if(ret == TABLE_IN_MEMORY)
+		{
+			if((ptr_page_table_source[PTX(sva)] & PERM_PRESENT) == PERM_PRESENT) (*num_pages)++;
+			if(ptr_page_table_source != ptr_last_located_page_table)
+			{
+				(*num_tables)++;
+				ptr_last_located_page_table = ptr_page_table_source;
+			}
+		}
+		sva += PAGE_SIZE;
+	}
 }
 
 /*BONUS*/
@@ -88,7 +105,25 @@ uint32 calculate_required_frames(uint32* page_directory, uint32 sva, uint32 size
 {
 	//TODO: [PROJECT MS2 - BONUS] [CHUNK OPERATIONS] calculate_required_frames
 	// Write your code here, remove the panic and write your code
-	panic("calculate_required_frames() is not implemented yet...!!");
+	// panic("calculate_required_frames() is not implemented yet...!!");
+	uint32 required_frames = 0, va, eva;
+	va = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(sva + size, PAGE_SIZE);
+	while(va < eva)
+	{
+		uint32 *ptr_page_table_source = NULL;
+		struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, va, &ptr_page_table_source);
+		if(ptr_frame_info == NULL) required_frames++;
+		va += PAGE_SIZE;
+	}
+	va = ROUNDDOWN(sva, PAGE_SIZE * NPTENTRIES), eva = ROUNDUP(sva + size, PAGE_SIZE * NPTENTRIES);
+	while(va < eva)
+	{
+		uint32 *ptr_page_table_source = NULL;
+		int ret = get_page_table(page_directory, va, &ptr_page_table_source);
+		if(ret == TABLE_NOT_EXIST) required_frames++;
+		va += PAGE_SIZE * NPTENTRIES;
+	}
+	return required_frames;
 }
 
 //=================================================================================//
