@@ -60,7 +60,7 @@ void *kmalloc(unsigned int size)
         blk = alloc_block_BF(size);
     else if (isKHeapPlacementStrategyFIRSTFIT())
         blk = alloc_block_FF(size);
-    else
+    else if (isKHeapPlacementStrategyNEXTFIT())
         blk = alloc_block_NF(size);
     if (blk == NULL)
         return NULL;

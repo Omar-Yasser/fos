@@ -67,9 +67,8 @@ void initialize_MemBlocksList(uint32 numOfBlocks)
     //  panic("initialize_MemBlocksList() is not implemented yet...!!");
     LIST_INIT(&AvailableMemBlocksList);
     for (int i = 0; i < MIN(numOfBlocks, MAX_MEM_BLOCK_CNT); i++)
-    {   
+    {
         LIST_INSERT_HEAD(&AvailableMemBlocksList, &MemBlockNodes[i]);
-        
     }
 }
 
@@ -142,9 +141,8 @@ struct MemBlock *divide_block(struct MemBlock *blockToDivide, uint32 size)
     blockToDivide->size -= size;
     blockToDivide->sva += size;
 
-    // Next Fit block starts from here 
+    // Next Fit block starts from here
     nf_sva = newBlock->sva + newBlock->size;
-
     return newBlock;
 }
 struct MemBlock *alloc_block_FF(uint32 size)
@@ -157,7 +155,7 @@ struct MemBlock *alloc_block_FF(uint32 size)
     {
         if (blk->size < size)
             continue;
-        return divide_block(blk, size);
+        return lastAllocBlk = divide_block(blk, size);
     }
     return NULL;
 }
@@ -182,31 +180,63 @@ struct MemBlock *alloc_block_BF(uint32 size)
     }
     if (minSize == __UINT32_MAX__)
         return NULL;
-    return divide_block(BF, size);
+    return lastAllocBlk = divide_block(BF, size);
 }
 
 //=========================================
 // [7] ALLOCATE BLOCK BY NEXT FIT:
 //=========================================
-struct MemBlock *find_block_NF(struct MemBlock *start, struct MemBlock *end, uint32 size)
-{
-    while (start != end)
-    {
-        if (start->size >= size)
-            return lastAllocBlk = divide_block(start, size);
-        start = LIST_NEXT(start);
-    }
-    return NULL;
-}
 struct MemBlock *alloc_block_NF(uint32 size)
 {
     // TODO: [PROJECT MS1 - BONUS] [DYNAMIC ALLOCATOR] alloc_block_NF
     //  Write your code here, remove the panic and write your code
     // panic("alloc_block_NF() is not implemented yet...!!");
-    struct MemBlock *block_NF = find_block_NF((lastAllocBlk == NULL ? LIST_FIRST(&FreeMemBlocksList) : LIST_NEXT(lastAllocBlk)), NULL, size);
-    if (block_NF == NULL && lastAllocBlk != NULL)
-        block_NF = find_block_NF(LIST_FIRST(&FreeMemBlocksList), lastAllocBlk, size);
-    return block_NF;
+    struct MemBlock *blk;
+    LIST_FOREACH(blk, &FreeMemBlocksList)
+    {
+        if (blk->size < size || (blk->sva < nf_sva))
+            continue;
+        if (blk->size == size)
+        {
+            LIST_REMOVE(&FreeMemBlocksList, blk);
+            nf_sva = blk->sva + blk->size;
+            return lastAllocBlk = blk;
+        }
+        struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
+        LIST_REMOVE(&AvailableMemBlocksList, newBlock);
+
+        newBlock->sva = nf_sva;
+        newBlock->size = size;
+        // align begin
+        if (nf_sva == blk->sva)
+        {
+            blk->sva += size;
+            blk->size -= size;
+        }
+        // align end
+        else if (nf_sva + size == blk->sva + blk->size)
+        {
+            blk->size -= size;
+        }
+        // middle
+        else
+        {
+            // right
+            struct MemBlock *newAllocBlock = LIST_FIRST(&AvailableMemBlocksList);
+            LIST_REMOVE(&AvailableMemBlocksList, newAllocBlock);
+            newAllocBlock->sva = nf_sva + size;
+            newAllocBlock->size = (blk->sva + blk->size) - newAllocBlock->sva;
+            insert_sorted_with_merge_freeList(newAllocBlock);
+            // left
+            blk->size = nf_sva - blk->sva;
+        }
+        // Next Fit block starts from here
+        nf_sva = newBlock->sva + newBlock->size;
+        return lastAllocBlk = newBlock;
+    }
+
+    // still NULL
+    return alloc_block_BF(size);
 }
 
 //===================================================
