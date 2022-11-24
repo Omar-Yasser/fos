@@ -226,9 +226,10 @@ struct MemBlock *alloc_block_NF(uint32 size)
             LIST_REMOVE(&AvailableMemBlocksList, newAllocBlock);
             newAllocBlock->sva = nf_sva + size;
             newAllocBlock->size = (blk->sva + blk->size) - newAllocBlock->sva;
-            insert_sorted_with_merge_freeList(newAllocBlock);
             // left
             blk->size = nf_sva - blk->sva;
+            
+            insert_sorted_with_merge_freeList(newAllocBlock);
         }
         // Next Fit block starts from here
         nf_sva = newBlock->sva + newBlock->size;
