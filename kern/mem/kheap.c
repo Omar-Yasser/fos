@@ -49,20 +49,45 @@ void *kmalloc(unsigned int size)
 {
     // TODO: [PROJECT MS2] [KERNEL HEAP] kmalloc
     //  your code is here, remove the panic and write your code
-    kpanic_into_prompt("kmalloc() is not implemented yet...!!");
+    // kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
     // NOTE: All kernel heap allocations are multiples of PAGE_SIZE (4KB)
     // refer to the project presentation and documentation for details
     //  use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
+	size = ROUNDUP(size, PAGE_SIZE);
+	struct MemBlock *blk;
+	if(isKHeapPlacementStrategyBESTFIT()) blk = alloc_block_BF(size);
+	else if(isKHeapPlacementStrategyFIRSTFIT()) blk = alloc_block_FF(size);
+	else blk = alloc_block_NF(size);
+	if(blk == NULL) return NULL;
+	int ret = allocate_chunk(ptr_page_directory, blk->sva, size, PERM_WRITEABLE | PERM_PRESENT);
+	if(ret == 0)
+	{
+		insert_sorted_allocList(blk);
+		return (void *)blk->sva;
+	}
 
     // change this "return" according to your answer
+	return NULL;
 }
 
 void kfree(void *virtual_address)
 {
     // TODO: [PROJECT MS2] [KERNEL HEAP] kfree
     //  Write your code here, remove the panic and write your code
-    panic("kfree() is not implemented yet...!!");
+    // panic("kfree() is not implemented yet...!!");
+	struct MemBlock *blk;
+	blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
+	if(blk == NULL) return;
+	LIST_REMOVE(&AllocMemBlocksList, blk);
+	uint32 sva = blk->sva, eva = sva + blk->size;
+	sva = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(eva, PAGE_SIZE);
+	while(sva < eva)
+	{
+		unmap_frame(ptr_page_directory, sva);
+		sva += PAGE_SIZE;
+	}
+	insert_sorted_with_merge_freeList(blk);
 }
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
