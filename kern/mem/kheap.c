@@ -1,15 +1,15 @@
 #include "kheap.h"
-
 #include <inc/memlayout.h>
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
-
+#define MAX_NUM_OF_FRAMES (1 << 20) + 5
+#define NEURTAL_ELEM 0
 //==================================================================//
 //==================================================================//
 // NOTE: All kernel heap allocations are multiples of PAGE_SIZE (4KB)//
 //==================================================================//
 //==================================================================//
-
+uint32 PA[MAX_NUM_OF_FRAMES];
 void initialize_dyn_block_system()
 {
     // TODO: [PROJECT MS2] [KERNEL HEAP] initialize_dyn_block_system
@@ -43,6 +43,7 @@ void initialize_dyn_block_system()
     newBlock->sva = (KERNEL_HEAP_START + ROUNDUP(MAX_MEM_BLOCK_CNT * sizeof(struct MemBlock), PAGE_SIZE));
 
     LIST_INSERT_HEAD(&(FreeMemBlocksList), newBlock);
+    memset(PA, NEURTAL_ELEM, sizeof(PA));
 }
 
 void *kmalloc(unsigned int size)
@@ -64,9 +65,15 @@ void *kmalloc(unsigned int size)
         blk = alloc_block_NF(size);
     if (blk == NULL)
         return NULL;
-    int ret = allocate_chunk(ptr_page_directory, blk->sva, size, PERM_WRITEABLE | PERM_PRESENT);
+    int ret = allocate_chunk(ptr_page_directory, blk->sva, size, PERM_WRITEABLE);
     if (ret == 0)
     {
+        uint32 start_source_va = ROUNDDOWN(blk->sva, PAGE_SIZE), end_source_va = ROUNDUP(blk->sva + size, PAGE_SIZE);
+        while (start_source_va < end_source_va)
+        {
+            PA[virtual_to_physical(ptr_page_directory, start_source_va) >> 12] = start_source_va;
+            start_source_va += PAGE_SIZE;
+        }
         insert_sorted_allocList(blk);
         return (void *)blk->sva;
     }
@@ -89,6 +96,7 @@ void kfree(void *virtual_address)
     sva = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(eva, PAGE_SIZE);
     while (sva < eva)
     {
+        PA[virtual_to_physical(ptr_page_directory, sva) >> 12] = NEURTAL_ELEM;
         unmap_frame(ptr_page_directory, sva);
         sva += PAGE_SIZE;
     }
@@ -99,8 +107,9 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 {
     // TODO: [PROJECT MS2] [KERNEL HEAP] kheap_virtual_address
     //  Write your code here, remove the panic and write your code
-    panic("kheap_virtual_address() is not implemented yet...!!");
+    // panic("kheap_virtual_address() is not implemented yet...!!");
 
+    return PA[physical_address >> 12];
     // return the virtual address corresponding to given physical_address
     // refer to the project presentation and documentation for details
     // EFFICIENT IMPLEMENTATION ~O(1) IS REQUIRED ==================
@@ -110,10 +119,11 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 {
     // TODO: [PROJECT MS2] [KERNEL HEAP] kheap_physical_address
     //  Write your code here, remove the panic and write your code
-    panic("kheap_physical_address() is not implemented yet...!!");
+    // panic("kheap_physical_address() is not implemented yet...!!");
 
     // return the physical address corresponding to given virtual_address
     // refer to the project presentation and documentation for details
+    return virtual_to_physical(ptr_page_directory, virtual_address);
 }
 
 void kfreeall()
@@ -148,5 +158,28 @@ void *krealloc(void *virtual_address, uint32 new_size)
 {
     // TODO: [PROJECT MS2 - BONUS] [KERNEL HEAP] krealloc
     //  Write your code here, remove the panic and write your code
-    panic("krealloc() is not implemented yet...!!");
+    // panic("krealloc() is not implemented yet...!!");
+    if (virtual_address == NULL)
+        return kmalloc(new_size);
+    if (new_size == 0)
+    {
+        kfree(virtual_address);
+        return virtual_address;
+    }
+    struct MemBlock *blk;
+    blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
+    if (blk == NULL)
+        return kmalloc(new_size);
+    if (blk->size >= new_size)
+        return virtual_address;
+    int ret = allocate_chunk(ptr_page_directory, blk->sva + blk->size, new_size - blk->size, PERM_WRITEABLE);
+    if (ret == 0)
+    {
+        blk->size += ROUNDUP(new_size - blk->size, PAGE_SIZE);
+        return virtual_address;
+    }
+    void *ptr = kmalloc(new_size);
+    copy_paste_chunk(ptr_page_directory, (uint32)virtual_address, (uint32)ptr, blk->size);
+    kfree(virtual_address);
+    return ptr;
 }
