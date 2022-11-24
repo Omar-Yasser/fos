@@ -194,7 +194,7 @@ struct MemBlock *alloc_block_NF(uint32 size)
     struct MemBlock *blk;
     LIST_FOREACH(blk, &FreeMemBlocksList)
     {
-        if (blk->size < size || (blk->sva < nf_sva))
+        if (blk->size < size || (blk->sva < nf_sva && nf_sva + size > blk->sva + blk->size))
             continue;
         if (blk->size == size)
         {
