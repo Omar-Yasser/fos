@@ -186,8 +186,9 @@ struct MemBlock *alloc_block_BF(uint32 size)
 //=========================================
 struct MemBlock *find_block_NF(struct MemBlock *start, struct MemBlock *end, uint32 size)
 {
-    while (start != end) {
-        if (start->size >= size) 
+    while (start != end)
+    {
+        if (start->size >= size)
             return lastAllocBlk = divide_block(start, size);
         start = LIST_NEXT(start);
     }
