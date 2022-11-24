@@ -56,7 +56,7 @@ void print_mem_block_lists()
 //==================================================================================//
 
 struct MemBlock *lastAllocBlk = NULL;
-
+uint32 nf_sva = 0;
 //===============================
 // [1] INITIALIZE AVAILABLE LIST:
 //===============================
@@ -67,8 +67,9 @@ void initialize_MemBlocksList(uint32 numOfBlocks)
     //  panic("initialize_MemBlocksList() is not implemented yet...!!");
     LIST_INIT(&AvailableMemBlocksList);
     for (int i = 0; i < MIN(numOfBlocks, MAX_MEM_BLOCK_CNT); i++)
-    {
+    {   
         LIST_INSERT_HEAD(&AvailableMemBlocksList, &MemBlockNodes[i]);
+        
     }
 }
 
@@ -141,6 +142,9 @@ struct MemBlock *divide_block(struct MemBlock *blockToDivide, uint32 size)
     blockToDivide->size -= size;
     blockToDivide->sva += size;
 
+    // Next Fit block starts from here 
+    nf_sva = newBlock->sva + newBlock->size;
+
     return newBlock;
 }
 struct MemBlock *alloc_block_FF(uint32 size)
@@ -153,7 +157,7 @@ struct MemBlock *alloc_block_FF(uint32 size)
     {
         if (blk->size < size)
             continue;
-        return lastAllocBlk = divide_block(blk, size);
+        return divide_block(blk, size);
     }
     return NULL;
 }
@@ -178,7 +182,7 @@ struct MemBlock *alloc_block_BF(uint32 size)
     }
     if (minSize == __UINT32_MAX__)
         return NULL;
-    return lastAllocBlk = divide_block(BF, size);
+    return divide_block(BF, size);
 }
 
 //=========================================

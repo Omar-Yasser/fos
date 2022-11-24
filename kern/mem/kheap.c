@@ -31,7 +31,7 @@ void initialize_dyn_block_system()
      */
     MAX_MEM_BLOCK_CNT = (uint32)(KERNEL_HEAP_MAX - KERNEL_HEAP_START) / PAGE_SIZE;
     MemBlockNodes = (struct MemBlock *)KERNEL_HEAP_START;
-    allocate_chunk(ptr_page_directory, KERNEL_HEAP_START, (sizeof(struct MemBlock)) * MAX_MEM_BLOCK_CNT, PERM_WRITEABLE | PERM_PRESENT);
+    allocate_chunk(ptr_page_directory, KERNEL_HEAP_START, (sizeof(struct MemBlock)) * MAX_MEM_BLOCK_CNT, PERM_WRITEABLE);
 #endif
     //[3] Initialize AvailableMemBlocksList by filling it with the MemBlockNodes
     initialize_MemBlocksList(MAX_MEM_BLOCK_CNT);
@@ -54,21 +54,25 @@ void *kmalloc(unsigned int size)
     // NOTE: All kernel heap allocations are multiples of PAGE_SIZE (4KB)
     // refer to the project presentation and documentation for details
     //  use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-	size = ROUNDUP(size, PAGE_SIZE);
-	struct MemBlock *blk;
-	if(isKHeapPlacementStrategyBESTFIT()) blk = alloc_block_BF(size);
-	else if(isKHeapPlacementStrategyFIRSTFIT()) blk = alloc_block_FF(size);
-	else blk = alloc_block_NF(size);
-	if(blk == NULL) return NULL;
-	int ret = allocate_chunk(ptr_page_directory, blk->sva, size, PERM_WRITEABLE | PERM_PRESENT);
-	if(ret == 0)
-	{
-		insert_sorted_allocList(blk);
-		return (void *)blk->sva;
-	}
+    size = ROUNDUP(size, PAGE_SIZE);
+    struct MemBlock *blk;
+    if (isKHeapPlacementStrategyBESTFIT())
+        blk = alloc_block_BF(size);
+    else if (isKHeapPlacementStrategyFIRSTFIT())
+        blk = alloc_block_FF(size);
+    else
+        blk = alloc_block_NF(size);
+    if (blk == NULL)
+        return NULL;
+    int ret = allocate_chunk(ptr_page_directory, blk->sva, size, PERM_WRITEABLE | PERM_PRESENT);
+    if (ret == 0)
+    {
+        insert_sorted_allocList(blk);
+        return (void *)blk->sva;
+    }
 
     // change this "return" according to your answer
-	return NULL;
+    return NULL;
 }
 
 void kfree(void *virtual_address)
@@ -76,18 +80,19 @@ void kfree(void *virtual_address)
     // TODO: [PROJECT MS2] [KERNEL HEAP] kfree
     //  Write your code here, remove the panic and write your code
     // panic("kfree() is not implemented yet...!!");
-	struct MemBlock *blk;
-	blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
-	if(blk == NULL) return;
-	LIST_REMOVE(&AllocMemBlocksList, blk);
-	uint32 sva = blk->sva, eva = sva + blk->size;
-	sva = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(eva, PAGE_SIZE);
-	while(sva < eva)
-	{
-		unmap_frame(ptr_page_directory, sva);
-		sva += PAGE_SIZE;
-	}
-	insert_sorted_with_merge_freeList(blk);
+    struct MemBlock *blk;
+    blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
+    if (blk == NULL)
+        return;
+    LIST_REMOVE(&AllocMemBlocksList, blk);
+    uint32 sva = blk->sva, eva = sva + blk->size;
+    sva = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(eva, PAGE_SIZE);
+    while (sva < eva)
+    {
+        unmap_frame(ptr_page_directory, sva);
+        sva += PAGE_SIZE;
+    }
+    insert_sorted_with_merge_freeList(blk);
 }
 
 unsigned int kheap_virtual_address(unsigned int physical_address)
