@@ -36,6 +36,7 @@ void create_and_allocate_page(uint32 *page_directory, uint32 va, uint32 perms)
     if (ptr_frame_info_va == NULL)
     {
         allocate_frame(&ptr_frame_info_va);
+        ptr_frame_info_va->va = va;
         map_frame(page_directory, ptr_frame_info_va, va, perms);
     }
 }
