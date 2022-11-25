@@ -8,6 +8,8 @@
 // NOTE: All kernel heap allocations are multiples of PAGE_SIZE (4KB)//
 //==================================================================//
 //==================================================================//
+
+//==================================================================//
 void initialize_dyn_block_system()
 {
     // TODO: [PROJECT MS2] [KERNEL HEAP] initialize_dyn_block_system
@@ -15,9 +17,9 @@ void initialize_dyn_block_system()
     //  kpanic_into_prompt("initialize_dyn_block_system() is not implemented yet...!!");
 
     //[1] Initialize two lists (AllocMemBlocksList & FreeMemBlocksList) [Hint: use LIST_INIT()]
-
     LIST_INIT(&AllocMemBlocksList);
     LIST_INIT(&FreeMemBlocksList);
+
 #if STATIC_MEMBLOCK_ALLOC
     // DO NOTHING
 #else
@@ -37,10 +39,10 @@ void initialize_dyn_block_system()
     struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
     LIST_REMOVE(&AvailableMemBlocksList, newBlock);
 
-    newBlock->size = ((KERNEL_HEAP_MAX - KERNEL_HEAP_START) - ROUNDUP(MAX_MEM_BLOCK_CNT * sizeof(struct MemBlock), PAGE_SIZE));
     newBlock->sva = (KERNEL_HEAP_START + ROUNDUP(MAX_MEM_BLOCK_CNT * sizeof(struct MemBlock), PAGE_SIZE));
+    newBlock->size = (KERNEL_HEAP_MAX - newBlock->sva);
 
-    LIST_INSERT_HEAD(&(FreeMemBlocksList), newBlock);
+    LIST_INSERT_HEAD(&FreeMemBlocksList, newBlock);
 }
 
 void *kmalloc(unsigned int size)
@@ -53,16 +55,17 @@ void *kmalloc(unsigned int size)
     // refer to the project presentation and documentation for details
     //  use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
     size = ROUNDUP(size, PAGE_SIZE);
-    struct MemBlock *blk;
-    if (isKHeapPlacementStrategyBESTFIT())
-        blk = alloc_block_BF(size);
-    else if (isKHeapPlacementStrategyFIRSTFIT())
+    struct MemBlock *blk = NULL;
+    if (isKHeapPlacementStrategyFIRSTFIT())
         blk = alloc_block_FF(size);
+    else if (isKHeapPlacementStrategyBESTFIT())
+        blk = alloc_block_BF(size);
     else if (isKHeapPlacementStrategyNEXTFIT())
         blk = alloc_block_NF(size);
     if (blk == NULL)
         return NULL;
     int ret = allocate_chunk(ptr_page_directory, blk->sva, size, PERM_WRITEABLE);
+    // successful allocation
     if (ret == 0)
     {
         insert_sorted_allocList(blk);
@@ -78,13 +81,11 @@ void kfree(void *virtual_address)
     // TODO: [PROJECT MS2] [KERNEL HEAP] kfree
     //  Write your code here, remove the panic and write your code
     // panic("kfree() is not implemented yet...!!");
-    struct MemBlock *blk;
-    blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
+    struct MemBlock *blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
     if (blk == NULL)
         return;
     LIST_REMOVE(&AllocMemBlocksList, blk);
-    uint32 sva = blk->sva, eva = sva + blk->size;
-    sva = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(eva, PAGE_SIZE);
+    uint32 sva = ROUNDDOWN(blk->sva, PAGE_SIZE), eva = ROUNDUP(blk->sva + blk->size, PAGE_SIZE);
     while (sva < eva)
     {
         unmap_frame(ptr_page_directory, sva);
@@ -111,9 +112,9 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
     //  Write your code here, remove the panic and write your code
     // panic("kheap_physical_address() is not implemented yet...!!");
 
+    return virtual_to_physical(ptr_page_directory, virtual_address);
     // return the physical address corresponding to given virtual_address
     // refer to the project presentation and documentation for details
-    return virtual_to_physical(ptr_page_directory, virtual_address);
 }
 
 void kfreeall()
@@ -150,24 +151,32 @@ void *krealloc(void *virtual_address, uint32 new_size)
     //  Write your code here, remove the panic and write your code
     // panic("krealloc() is not implemented yet...!!");
     if (virtual_address == NULL)
+    {
         return kmalloc(new_size);
+    }
     if (new_size == 0)
     {
         kfree(virtual_address);
         return virtual_address;
     }
-    struct MemBlock *blk;
-    blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
+    struct MemBlock *blk = find_block(&AllocMemBlocksList, (uint32)virtual_address);
     if (blk == NULL)
+    {
         return kmalloc(new_size);
+    }
+    // current block has already enough size
     if (blk->size >= new_size)
+    {
         return virtual_address;
+    }
+    // try to alloc in the same place
     int ret = allocate_chunk(ptr_page_directory, blk->sva + blk->size, new_size - blk->size, PERM_WRITEABLE);
     if (ret == 0)
     {
         blk->size += ROUNDUP(new_size - blk->size, PAGE_SIZE);
         return virtual_address;
     }
+    // alloc in a new place
     void *ptr = kmalloc(new_size);
     copy_paste_chunk(ptr_page_directory, (uint32)virtual_address, (uint32)ptr, blk->size);
     kfree(virtual_address);

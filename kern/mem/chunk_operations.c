@@ -36,7 +36,7 @@ void create_and_allocate_page(uint32 *page_directory, uint32 va, uint32 perms)
     if (ptr_frame_info_va == NULL)
     {
         allocate_frame(&ptr_frame_info_va);
-        ptr_frame_info_va->va = va;
+        ptr_frame_info_va->va = va; // map physical to virtual
         map_frame(page_directory, ptr_frame_info_va, va, perms);
     }
 }
@@ -257,8 +257,8 @@ uint32 calculate_required_frames(uint32 *page_directory, uint32 sva, uint32 size
     va = ROUNDDOWN(sva, PAGE_SIZE), eva = ROUNDUP(sva + size, PAGE_SIZE);
     while (va < eva)
     {
-        uint32 *ptr_page_table_source = NULL;
-        struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, va, &ptr_page_table_source);
+        uint32 *ptr_page_table_va = NULL;
+        struct FrameInfo *ptr_frame_info = get_frame_info(page_directory, va, &ptr_page_table_va);
         if (ptr_frame_info == NULL)
             required_frames++;
         va += PAGE_SIZE;
@@ -266,8 +266,8 @@ uint32 calculate_required_frames(uint32 *page_directory, uint32 sva, uint32 size
     va = ROUNDDOWN(sva, PAGE_SIZE * NPTENTRIES), eva = ROUNDUP(sva + size, PAGE_SIZE * NPTENTRIES);
     while (va < eva)
     {
-        uint32 *ptr_page_table_source = NULL;
-        int ret = get_page_table(page_directory, va, &ptr_page_table_source);
+        uint32 *ptr_page_table_va = NULL;
+        int ret = get_page_table(page_directory, va, &ptr_page_table_va);
         if (ret == TABLE_NOT_EXIST)
             required_frames++;
         va += PAGE_SIZE * NPTENTRIES;

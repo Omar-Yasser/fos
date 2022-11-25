@@ -147,7 +147,7 @@ struct MemBlock *divide_block(struct MemBlock *blockToDivide, uint32 size)
     // Next Fit block starts from here
     nf_sva = newBlock->sva + newBlock->size;
     lastAllocBlk = newBlock;
-    
+
     return newBlock;
 }
 struct MemBlock *alloc_block_FF(uint32 size)
