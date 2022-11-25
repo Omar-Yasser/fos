@@ -130,6 +130,9 @@ struct MemBlock *divide_block(struct MemBlock *blockToDivide, uint32 size)
 {
     if (blockToDivide->size == size)
     {
+        // Next Fit block starts from here
+        nf_sva = blockToDivide->sva + blockToDivide->size;
+        lastAllocBlk = blockToDivide;
         LIST_REMOVE(&FreeMemBlocksList, blockToDivide);
         return blockToDivide;
     }
@@ -143,6 +146,8 @@ struct MemBlock *divide_block(struct MemBlock *blockToDivide, uint32 size)
 
     // Next Fit block starts from here
     nf_sva = newBlock->sva + newBlock->size;
+    lastAllocBlk = newBlock;
+    
     return newBlock;
 }
 struct MemBlock *alloc_block_FF(uint32 size)
@@ -155,7 +160,7 @@ struct MemBlock *alloc_block_FF(uint32 size)
     {
         if (blk->size < size)
             continue;
-        return lastAllocBlk = divide_block(blk, size);
+        return divide_block(blk, size);
     }
     return NULL;
 }
@@ -180,7 +185,7 @@ struct MemBlock *alloc_block_BF(uint32 size)
     }
     if (minSize == __UINT32_MAX__)
         return NULL;
-    return lastAllocBlk = divide_block(BF, size);
+    return divide_block(BF, size);
 }
 
 //=========================================
@@ -194,49 +199,12 @@ struct MemBlock *alloc_block_NF(uint32 size)
     struct MemBlock *blk;
     LIST_FOREACH(blk, &FreeMemBlocksList)
     {
-        if (blk->size < size || (blk->sva < nf_sva && nf_sva + size > blk->sva + blk->size))
+        if (blk->size < size || blk->sva < nf_sva)
             continue;
-        if (blk->size == size)
-        {
-            LIST_REMOVE(&FreeMemBlocksList, blk);
-            nf_sva = blk->sva + blk->size;
-            return lastAllocBlk = blk;
-        }
-        struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
-        LIST_REMOVE(&AvailableMemBlocksList, newBlock);
-
-        newBlock->sva = nf_sva;
-        newBlock->size = size;
-        // align begin
-        if (nf_sva == blk->sva)
-        {
-            blk->sva += size;
-            blk->size -= size;
-        }
-        // align end
-        else if (nf_sva + size == blk->sva + blk->size)
-        {
-            blk->size -= size;
-        }
-        // middle
-        else
-        {
-            // right
-            struct MemBlock *newAllocBlock = LIST_FIRST(&AvailableMemBlocksList);
-            LIST_REMOVE(&AvailableMemBlocksList, newAllocBlock);
-            newAllocBlock->sva = nf_sva + size;
-            newAllocBlock->size = (blk->sva + blk->size) - newAllocBlock->sva;
-            insert_sorted_with_merge_freeList(newAllocBlock);
-            // left
-            blk->size = nf_sva - blk->sva;
-        }
-        // Next Fit block starts from here
-        nf_sva = newBlock->sva + newBlock->size;
-        return lastAllocBlk = newBlock;
+        return divide_block(blk, size);
     }
-
     // still NULL
-    return alloc_block_BF(size);
+    return alloc_block_FF(size);
 }
 
 //===================================================
