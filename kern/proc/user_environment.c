@@ -415,17 +415,18 @@ void env_free(struct Env *e)
 	// [1] [NOT REQUIRED] [If BUFFERING is Enabled] Un-buffer any BUFFERED page belong to this environment from the free/modified lists
 	// [2] Free the pages in the PAGE working set from the main memory
 	// [3] free the PAGE working set itself from the main memory
-	// [4] [NOT REQUIRED] Free Shared variables [if any]
-	// [5] [NOT REQUIRED] Free Semaphores [if any]
-	// [6] Free all TABLES from the main memory
-	// [7] free the page DIRECTORY from the main memory
+	// [4] free the MemBlockNodes array of the USER HEAP dynamic allocator [if exists]
+	// [5] Free Shared variables [if any]
+	// [6] Free Semaphores [if any]
+	// [7] Free all TABLES from the main memory
+	// [8] free the page DIRECTORY from the main memory
 
-	// [8] remove this program from the page file
+	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
 	pf_free_env(e); /*(ALREADY DONE for you)*/ // (removes all of the program pages from the page file)
 	/*========================*/
 
-	// [9] free the environment (return it back to the free environment list)
+	// [10] free the environment (return it back to the free environment list)
 	/*(ALREADY DONE for you)*/
 	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 	/*========================*/
@@ -570,7 +571,7 @@ void free_environment(struct Env* e)
 //===============================================
 void * create_user_page_WS(struct Env * e, unsigned int numOfElements)
 {
-	//TODO: [PROJECT MS3] [KERNEL DYNAMIC ALLOC] create_user_page_WS()
+	//TODO: [PROJECT MS3] [PROGRAM LOAD] create_user_page_WS()
 	// Write your code here, remove the panic and write your code
 	panic("create_user_page_WS() is not implemented yet...!!");
 
@@ -582,7 +583,7 @@ void * create_user_page_WS(struct Env * e, unsigned int numOfElements)
 //==================================================
 void * create_user_directory()
 {
-	//TODO: [PROJECT MS3] [KERNEL DYNAMIC ALLOC] create_user_directory()
+	//TODO: [PROJECT MS3] [PROGRAM LOAD] create_user_directory()
 	// Write your code here, remove the panic and write your code
 	panic("create_user_directory() is not implemented yet...!!");
 
