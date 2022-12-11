@@ -271,14 +271,25 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	// your code is here, remove the panic and write your code
 	panic("createSharedObject() is not implemented yet...!!");
 
-	struct Env* myenv = curenv; //The calling environment
-
 	// This function should create the shared object at the given virtual address with the given size
 	// and return the ShareObjectID
 	// RETURN:
 	//	a) ShareObjectID (its index in "shares" array) if success
 	//	b) E_SHARED_MEM_EXISTS if the shared object already exists
 	//	c) E_NO_SHARE if the number of shared objects reaches max "MAX_SHARES"
+
+	// struct Env* myenv = curenv; //The calling environment
+	// int ret = get_share_object_ID(ownerID, shareName);
+	// if(ret != E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_EXISTS;
+	// struct Share *allocatedObject = NULL;
+	// int sharedObjectID = allocate_share_object(&allocatedObject);
+	// if(sharedObjectID == E_NO_SHARE) return E_NO_SHARE;
+	// allocatedObject->ownerID = ownerID;
+	// strcpy(allocatedObject->name, shareName);
+	// allocatedObject->size = size;
+	// allocatedObject->isWritable = isWritable;
+	// allocatedObject->references = 1;
+	// return sharedObjectID;
 }
 
 //======================
@@ -290,8 +301,20 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	// your code is here, remove the panic and write your code
 	panic("getSharedObject() is not implemented yet...!!");
 
-	struct Env* myenv = curenv; //The calling environment
-
+	// struct Env* myenv = curenv; //The calling environment
+	// int sharedObjectID = get_share_object_ID(ownerID, shareName);
+	// if(sharedObjectID == E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_NOT_EXISTS;
+	// int framesNumber = shares[sharedObjectID].size / PAGE_SIZE;
+	// for(int i = 0; i < framesNumber; ++i)
+	// {
+	// 	struct FrameInfo *ptr_frame_info = NULL; 
+	// 	ptr_frame_info = get_frame_from_storage(shares[sharedObjectID].framesStorage, i);
+	// 	struct SharingVarInfo sharedVarInfo;
+	// 	sharedVarInfo.start_va = ptr_frame_info->va;
+	// 	sharedVarInfo.owner_flag = shares[sharedObjectID].isWritable;
+	// 	sharedVarInfo.size = PAGE_SIZE;
+	// 	sharedVarInfo.id_in_shares_array = sharedObjectID;
+	// }
 	// 	This function should share the required object in the heap of the current environment
 	//	starting from the given virtual_address with the specified permissions of the object: read_only/writable
 	// 	and return the ShareObjectID

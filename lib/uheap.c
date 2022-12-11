@@ -30,13 +30,26 @@ void initialize_dyn_block_system()
 {
 	//TODO: [PROJECT MS3] [USER HEAP - USER SIDE] initialize_dyn_block_system
 	// your code is here, remove the panic and write your code
-	panic("initialize_dyn_block_system() is not implemented yet...!!");
+	// panic("initialize_dyn_block_system() is not implemented yet...!!");
 
 	//[1] Initialize two lists (AllocMemBlocksList & FreeMemBlocksList) [Hint: use LIST_INIT()]
+	LIST_INIT(&AllocMemBlocksList);
+    LIST_INIT(&FreeMemBlocksList);
 	//[2] Dynamically allocate the array of MemBlockNodes at VA USER_DYN_BLKS_ARRAY
 	//	  (remember to set MAX_MEM_BLOCK_CNT with the chosen size of the array)
+	MAX_MEM_BLOCK_CNT = (uint32)(USER_HEAP_MAX - USER_HEAP_START) / PAGE_SIZE;
+    MemBlockNodes = (struct MemBlock *)USER_DYN_BLKS_ARRAY;
+    sys_allocate_chunk(USER_DYN_BLKS_ARRAY, (sizeof(struct MemBlock)) * MAX_MEM_BLOCK_CNT, PERM_WRITEABLE | PERM_USER);
 	//[3] Initialize AvailableMemBlocksList by filling it with the MemBlockNodes
+	initialize_MemBlocksList(MAX_MEM_BLOCK_CNT);
 	//[4] Insert a new MemBlock with the heap size into the FreeMemBlocksList
+	struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
+    LIST_REMOVE(&AvailableMemBlocksList, newBlock);
+
+    newBlock->sva = USER_HEAP_START;
+    newBlock->size = USER_HEAP_MAX - USER_HEAP_START;
+
+    LIST_INSERT_HEAD(&FreeMemBlocksList, newBlock);
 }
 
 //=================================
@@ -106,12 +119,19 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	// Steps:
 	//	1) Implement FIRST FIT strategy to search the heap for suitable space
 	//		to the required allocation size (space should be on 4 KB BOUNDARY)
+	// if(!sys_isUHeapPlacementStrategyFIRSTFIT) return NULL;
+	// size = ROUNDUP(size, PAGE_SIZE);
+	// void *ptr = malloc(size);
 	//	2) if no suitable space found, return NULL
+	// if(ptr == NULL) return NULL;
 	//	 Else,
+	
 	//	3) Call sys_createSharedObject(...) to invoke the Kernel for allocation of shared variable
 	//		sys_createSharedObject(): if succeed, it returns the ID of the created variable. Else, it returns -ve
+	// int ret = sys_createSharedObject(sharedVarName, size, isWritable, ptr);
 	//	4) If the Kernel successfully creates the shared variable, return its virtual address
 	//	   Else, return NULL
+	// return (ret < 0 ? NULL : ret);
 
 	//This function should find the space of the required range
 	// ******** ON 4KB BOUNDARY ******************* //
@@ -132,19 +152,26 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 	//TODO: [PROJECT MS3] [SHARING - USER SIDE] sget()
 	// Write your code here, remove the panic and write your code
 	panic("sget() is not implemented yet...!!");
+	// if(!sys_isUHeapPlacementStrategyFIRSTFIT) return NULL;
 
 	// Steps:
 	//	1) Get the size of the shared variable (use sys_getSizeOfSharedObject())
+	// int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
 	//	2) If not exists, return NULL
+	// if(size == E_SHARED_MEM_NOT_EXISTS) return NULL;
 	//	3) Implement FIRST FIT strategy to search the heap for suitable space
 	//		to share the variable (should be on 4 KB BOUNDARY)
+	// size = ROUNDUP(size, PAGE_SIZE);
+	// void *ptr = malloc(size);
 	//	4) if no suitable space found, return NULL
+	// if(ptr == NULL) return NULL;
 	//	 Else,
 	//	5) Call sys_getSharedObject(...) to invoke the Kernel for sharing this variable
 	//		sys_getSharedObject(): if succeed, it returns the ID of the shared variable. Else, it returns -ve
+	// int ret = sys_getSharedObject(ownerEnvID, sharedVarName, ptr);
 	//	6) If the Kernel successfully share the variable, return its virtual address
 	//	   Else, return NULL
-	//
+	// return (ret < 0 ? NULL : ret);
 
 	//This function should find the space for sharing the variable
 	// ******** ON 4KB BOUNDARY ******************* //
