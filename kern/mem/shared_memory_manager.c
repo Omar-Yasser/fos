@@ -284,7 +284,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	struct Share *allocatedObject = NULL;
 	int sharedObjectID = allocate_share_object(&allocatedObject);
 	if(sharedObjectID == E_NO_SHARE) return E_NO_SHARE;
-	int va = (int)virtual_address;
+	uint32 va = (uint32)virtual_address;
 	allocate_chunk(curenv->env_page_directory, va, size, PERM_WRITEABLE | PERM_USER);
 	allocatedObject->ownerID = ownerID;
 	strcpy(allocatedObject->name, shareName);
@@ -292,7 +292,6 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	allocatedObject->isWritable = isWritable;
 	allocatedObject->references = 1;
 	uint32 start_source_va = ROUNDDOWN(va, PAGE_SIZE), end_source_va = ROUNDUP(va + size, PAGE_SIZE), idx = 0;
-    
     while (start_source_va < end_source_va)
     {
         uint32 *ptr_page_table_va = NULL;
@@ -323,7 +322,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	int sharedObjectID = get_share_object_ID(ownerID, shareName);
 	if(sharedObjectID == E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_NOT_EXISTS;
 	int sharedObjectSize = getSizeOfSharedObject(ownerID, shareName);
-	uint32 sva = ROUNDDOWN((int)virtual_address, PAGE_SIZE), eva = ROUNDUP(sva + sharedObjectSize, PAGE_SIZE);
+	uint32 va = (uint32)virtual_address, sva = ROUNDDOWN(va, PAGE_SIZE), eva = ROUNDUP(va + sharedObjectSize, PAGE_SIZE);
 	struct Share *allocatedObj = &shares[sharedObjectID];
 	allocatedObj->references++;
 	uint32 isWritable = (allocatedObj->isWritable ? PERM_WRITEABLE : 0), idx = 0;
@@ -334,8 +333,6 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
         sva += PAGE_SIZE;
     }
 	return sharedObjectID;
-
-	
 }
 
 //==================================================================================//
