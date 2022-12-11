@@ -67,14 +67,20 @@ void* malloc(uint32 size)
 
 	//TODO: [PROJECT MS3] [USER HEAP - USER SIDE] malloc
 	// your code is here, remove the panic and write your code
-	panic("malloc() is not implemented yet...!!");
-
+	// panic("malloc() is not implemented yet...!!");
+	if(!sys_isUHeapPlacementStrategyFIRSTFIT()) return NULL;
 	// Steps:
 	//	1) Implement FF strategy to search the heap for suitable space
 	//		to the required allocation size (space should be on 4 KB BOUNDARY)
+	size = ROUNDUP(size, PAGE_SIZE);
+	struct MemBlock *blk = NULL;
+	blk = alloc_block_FF(size);
 	//	2) if no suitable space found, return NULL
+	if (blk == NULL)
+        return NULL;
 	// 	3) Return pointer containing the virtual address of allocated space,
 	//
+	return (void *)blk->sva;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT()... to check the current strategy
 }
 
