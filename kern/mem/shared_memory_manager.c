@@ -269,7 +269,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 {
 	//TODO: [PROJECT MS3] [SHARING - KERNEL SIDE] createSharedObject()
 	// your code is here, remove the panic and write your code
-	panic("createSharedObject() is not implemented yet...!!");
+	// panic("createSharedObject() is not implemented yet...!!");
 
 	// This function should create the shared object at the given virtual address with the given size
 	// and return the ShareObjectID
@@ -278,18 +278,29 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	//	b) E_SHARED_MEM_EXISTS if the shared object already exists
 	//	c) E_NO_SHARE if the number of shared objects reaches max "MAX_SHARES"
 
-	// struct Env* myenv = curenv; //The calling environment
-	// int ret = get_share_object_ID(ownerID, shareName);
-	// if(ret != E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_EXISTS;
-	// struct Share *allocatedObject = NULL;
-	// int sharedObjectID = allocate_share_object(&allocatedObject);
-	// if(sharedObjectID == E_NO_SHARE) return E_NO_SHARE;
-	// allocatedObject->ownerID = ownerID;
-	// strcpy(allocatedObject->name, shareName);
-	// allocatedObject->size = size;
-	// allocatedObject->isWritable = isWritable;
-	// allocatedObject->references = 1;
-	// return sharedObjectID;
+	struct Env* myenv = curenv; //The calling environment
+	int ret = get_share_object_ID(ownerID, shareName);
+	if(ret != E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_EXISTS;
+	struct Share *allocatedObject = NULL;
+	int sharedObjectID = allocate_share_object(&allocatedObject);
+	if(sharedObjectID == E_NO_SHARE) return E_NO_SHARE;
+	int va = (int)virtual_address;
+	allocate_chunk(curenv->env_page_directory, va, size, PERM_WRITEABLE | PERM_USER);
+	allocatedObject->ownerID = ownerID;
+	strcpy(allocatedObject->name, shareName);
+	allocatedObject->size = size;
+	allocatedObject->isWritable = isWritable;
+	allocatedObject->references = 1;
+	uint32 start_source_va = ROUNDDOWN(va, PAGE_SIZE), end_source_va = ROUNDUP(va + size, PAGE_SIZE), idx = 0;
+    
+    while (start_source_va < end_source_va)
+    {
+        uint32 *ptr_page_table_va = NULL;
+    	struct FrameInfo *ptr_frame_info_va = get_frame_info(curenv->env_page_directory, start_source_va, &ptr_page_table_va);
+		add_frame_to_storage(allocatedObject->framesStorage, ptr_frame_info_va, idx++);
+        start_source_va += PAGE_SIZE;
+    }
+	return sharedObjectID;
 }
 
 //======================
@@ -299,28 +310,32 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 {
 	//TODO: [PROJECT MS3] [SHARING - KERNEL SIDE] getSharedObject()
 	// your code is here, remove the panic and write your code
-	panic("getSharedObject() is not implemented yet...!!");
+	// panic("getSharedObject() is not implemented yet...!!");
 
-	// struct Env* myenv = curenv; //The calling environment
-	// int sharedObjectID = get_share_object_ID(ownerID, shareName);
-	// if(sharedObjectID == E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_NOT_EXISTS;
-	// int framesNumber = shares[sharedObjectID].size / PAGE_SIZE;
-	// for(int i = 0; i < framesNumber; ++i)
-	// {
-	// 	struct FrameInfo *ptr_frame_info = NULL; 
-	// 	ptr_frame_info = get_frame_from_storage(shares[sharedObjectID].framesStorage, i);
-	// 	struct SharingVarInfo sharedVarInfo;
-	// 	sharedVarInfo.start_va = ptr_frame_info->va;
-	// 	sharedVarInfo.owner_flag = shares[sharedObjectID].isWritable;
-	// 	sharedVarInfo.size = PAGE_SIZE;
-	// 	sharedVarInfo.id_in_shares_array = sharedObjectID;
-	// }
 	// 	This function should share the required object in the heap of the current environment
 	//	starting from the given virtual_address with the specified permissions of the object: read_only/writable
 	// 	and return the ShareObjectID
 	// RETURN:
 	//	a) sharedObjectID (its index in the array) if success
 	//	b) E_SHARED_MEM_NOT_EXISTS if the shared object is not exists
+	
+	struct Env* myenv = curenv; //The calling environment
+	int sharedObjectID = get_share_object_ID(ownerID, shareName);
+	if(sharedObjectID == E_SHARED_MEM_NOT_EXISTS) return E_SHARED_MEM_NOT_EXISTS;
+	int sharedObjectSize = getSizeOfSharedObject(ownerID, shareName);
+	uint32 sva = ROUNDDOWN((int)virtual_address, PAGE_SIZE), eva = ROUNDUP(sva + sharedObjectSize, PAGE_SIZE);
+	struct Share *allocatedObj = &shares[sharedObjectID];
+	allocatedObj->references++;
+	uint32 isWritable = (allocatedObj->isWritable ? PERM_WRITEABLE : 0), idx = 0;
+	while (sva < eva)
+    {
+        struct FrameInfo *ptr_frame_info = get_frame_from_storage(allocatedObj->framesStorage, idx++);
+		map_frame(curenv->env_page_directory, ptr_frame_info, sva, isWritable | PERM_USER);
+        sva += PAGE_SIZE;
+    }
+	return sharedObjectID;
+
+	
 }
 
 //==================================================================================//

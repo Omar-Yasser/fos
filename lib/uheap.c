@@ -121,23 +121,22 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 
 	//TODO: [PROJECT MS3] [SHARING - USER SIDE] smalloc()
 	// Write your code here, remove the panic and write your code
-	panic("smalloc() is not implemented yet...!!");
+	// panic("smalloc() is not implemented yet...!!");
+
 	// Steps:
 	//	1) Implement FIRST FIT strategy to search the heap for suitable space
 	//		to the required allocation size (space should be on 4 KB BOUNDARY)
-	// if(!sys_isUHeapPlacementStrategyFIRSTFIT) return NULL;
-	// size = ROUNDUP(size, PAGE_SIZE);
-	// void *ptr = malloc(size);
+	void *ptr = malloc(size);
 	//	2) if no suitable space found, return NULL
-	// if(ptr == NULL) return NULL;
+	if(ptr == NULL) return NULL;
 	//	 Else,
 	
 	//	3) Call sys_createSharedObject(...) to invoke the Kernel for allocation of shared variable
 	//		sys_createSharedObject(): if succeed, it returns the ID of the created variable. Else, it returns -ve
-	// int ret = sys_createSharedObject(sharedVarName, size, isWritable, ptr);
+	int ret = sys_createSharedObject(sharedVarName, size, isWritable, ptr);
 	//	4) If the Kernel successfully creates the shared variable, return its virtual address
 	//	   Else, return NULL
-	// return (ret < 0 ? NULL : ret);
+	return (ret < 0 ? NULL : ptr);
 
 	//This function should find the space of the required range
 	// ******** ON 4KB BOUNDARY ******************* //
@@ -157,27 +156,26 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 
 	//TODO: [PROJECT MS3] [SHARING - USER SIDE] sget()
 	// Write your code here, remove the panic and write your code
-	panic("sget() is not implemented yet...!!");
+	// panic("sget() is not implemented yet...!!");
 	// if(!sys_isUHeapPlacementStrategyFIRSTFIT) return NULL;
 
 	// Steps:
 	//	1) Get the size of the shared variable (use sys_getSizeOfSharedObject())
-	// int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
+	int sharedObjectSize = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
 	//	2) If not exists, return NULL
-	// if(size == E_SHARED_MEM_NOT_EXISTS) return NULL;
+	if(sharedObjectSize == E_SHARED_MEM_NOT_EXISTS) return NULL;
 	//	3) Implement FIRST FIT strategy to search the heap for suitable space
 	//		to share the variable (should be on 4 KB BOUNDARY)
-	// size = ROUNDUP(size, PAGE_SIZE);
-	// void *ptr = malloc(size);
+	void *ptr = malloc(sharedObjectSize);
 	//	4) if no suitable space found, return NULL
-	// if(ptr == NULL) return NULL;
+	if(ptr == NULL) return NULL;
 	//	 Else,
 	//	5) Call sys_getSharedObject(...) to invoke the Kernel for sharing this variable
 	//		sys_getSharedObject(): if succeed, it returns the ID of the shared variable. Else, it returns -ve
-	// int ret = sys_getSharedObject(ownerEnvID, sharedVarName, ptr);
+	int ret = sys_getSharedObject(ownerEnvID, sharedVarName, ptr);
 	//	6) If the Kernel successfully share the variable, return its virtual address
 	//	   Else, return NULL
-	// return (ret < 0 ? NULL : ret);
+	return (ret < 0 ? NULL : ptr);
 
 	//This function should find the space for sharing the variable
 	// ******** ON 4KB BOUNDARY ******************* //
