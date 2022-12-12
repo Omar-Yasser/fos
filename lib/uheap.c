@@ -7,7 +7,7 @@
 int FirstTimeFlag = 1;
 void InitializeUHeap()
 {
-	if(FirstTimeFlag)
+	if (FirstTimeFlag)
 	{
 		initialize_dyn_block_system();
 		cprintf("DYNAMIC BLOCK SYSTEM IS INITIALIZED\n");
@@ -80,6 +80,7 @@ void *malloc(uint32 size)
 	//	2) if no suitable space found, return NULL
 	if (blk == NULL)
 		return NULL;
+	insert_sorted_allocList(blk);
 	// 	3) Return pointer containing the virtual address of allocated space,
 	//
 	return (void *)blk->sva;
@@ -107,20 +108,16 @@ void free(void *virtual_address)
 	// you should get the size of the given allocation using its address
 	uint32 va = ROUNDDOWN((uint32)virtual_address, PAGE_SIZE);
 	struct MemBlock *blk = find_block(&AllocMemBlocksList, va);
-	uint32 blkSize = 0;
-	if (blk != NULL)
-	{
-		blkSize = blk->size;
-		LIST_REMOVE(&AllocMemBlocksList, blk);
-		struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
-		LIST_REMOVE(&AvailableMemBlocksList, newBlock);
-		newBlock->sva = va;
-		newBlock->size = blkSize;
-		insert_sorted_with_merge_freeList(newBlock);
-	}
+	uint32 blkSize = blk->size;
+	LIST_REMOVE(&AllocMemBlocksList, blk);
+	struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
+	LIST_REMOVE(&AvailableMemBlocksList, newBlock);
+	newBlock->sva = va;
+	newBlock->size = blkSize;
+	insert_sorted_with_merge_freeList(blk);
 	// you need to call sys_free_user_mem()
-	sys_free_user_mem(va, blkSize);
 	// refer to the project presentation and documentation for details
+	sys_free_user_mem(va, blkSize);
 }
 
 //=================================
