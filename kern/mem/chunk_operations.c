@@ -303,12 +303,43 @@ void free_user_mem(struct Env *e, uint32 virtual_address, uint32 size)
 {
     // TODO: [PROJECT MS3] [USER HEAP - KERNEL SIDE] free_user_mem
     //  Write your code here, remove the panic and write your code
-    panic("free_user_mem() is not implemented yet...!!");
+    // panic("free_user_mem() is not implemented yet...!!");
 
     // This function should:
     // 1. Free ALL pages of the given range from the Page File
+    uint32 start_source_va = virtual_address, end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE);
+    while (start_source_va < end_source_va)
+    {
+        pf_remove_env_page(e, start_source_va);
+        start_source_va += PAGE_SIZE;
+    }
     // 2. Free ONLY pages that are resident in the working set from the memory
+    for(int idx = 0; idx < e->page_WS_max_size; ++idx)
+    {
+        uint32 ws_virtual_address = env_page_ws_get_virtual_address(e, idx);
+        // check if the working set entry is not empty and its virtual address between the destined space for deallocation
+        // because there might be working set entries that does belong to other objects/variables
+        if(!(env_page_ws_is_entry_empty(e, idx)) && ws_virtual_address >= virtual_address && ws_virtual_address < end_source_va)
+        {
+            unmap_frame(e->env_page_directory, env_page_ws_get_virtual_address(e, idx));
+            env_page_ws_clear_entry(e, idx);
+        }
+    }
     // 3. Removes ONLY the empty page tables (i.e. not used) (no pages are mapped in the table)
+    start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE * NPTENTRIES), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE * NPTENTRIES);
+    while (start_source_va < end_source_va)
+    {
+        if(!pd_is_table_used(e->env_page_directory, start_source_va))
+        {
+            // we need to deallocate the physical frame that holds the empty page table, don't know how yet
+            // uint32 *ptr_page_table = NULL;
+            // get_page_table(e->env_page_directory, start_source_va, &ptr_page_table);
+            // unmap_frame(e->env_page_directory, (uint32))
+            // virtual_to_physical
+            pd_clear_page_dir_entry(e->env_page_directory, start_source_va);
+        }
+        start_source_va += PAGE_SIZE * NPTENTRIES;
+    }
 }
 
 //=====================================
