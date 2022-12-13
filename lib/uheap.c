@@ -108,6 +108,7 @@ void free(void *virtual_address)
 	// you should get the size of the given allocation using its address
 	uint32 va = ROUNDDOWN((uint32)virtual_address, PAGE_SIZE);
 	struct MemBlock *blk = find_block(&AllocMemBlocksList, va);
+	assert(blk != NULL);
 	uint32 blkSize = blk->size;
 	LIST_REMOVE(&AllocMemBlocksList, blk);
 	struct MemBlock *newBlock = LIST_FIRST(&AvailableMemBlocksList);
@@ -245,7 +246,9 @@ void sfree(void *virtual_address)
 	// TODO: [PROJECT MS3 - BONUS] [SHARING - USER SIDE] sfree()
 
 	// Write your code here, remove the panic and write your code
-	panic("sfree() is not implemented yet...!!");
+	// panic("sfree() is not implemented yet...!!");
+	free(virtual_address);
+	sys_freeSharedObject(-1, virtual_address);
 }
 
 //==================================================================================//
