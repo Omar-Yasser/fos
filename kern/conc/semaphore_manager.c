@@ -220,6 +220,6 @@ void signalSemaphore(int ownerEnvID, char* semaphoreName)
 		struct Env* myenv = dequeue(&semaphores[semID].env_queue);
 		sched_insert_ready(myenv);
 		myenv->env_status = ENV_READY;
-		}
+	}
 }
 
