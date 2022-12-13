@@ -105,17 +105,16 @@ int chk(uint32 fault_va) // check if it's a stack/heap page
 	return !(fault_va < USTACKTOP && fault_va >= USER_HEAP_START);
 }
 
-void clk(struct Env *curenv) // clock alogrithm
+void clk(struct Env *curenv, int32 *va, int32 *perms) // clock alogrithm
 {
-	int va = env_page_ws_get_virtual_address(curenv, curenv->page_last_WS_index),
-		perms = pt_get_page_permissions(curenv->env_page_directory, va);
-	while ((perms & PERM_USED) == PERM_USED)
+	while (((*perms) & PERM_USED) == PERM_USED)
 	{
-		pt_set_page_permissions(curenv->env_page_directory, va, 0, PERM_USED);
+		assert(env_page_ws_is_entry_empty(curenv, curenv->page_last_WS_index) == 0);
+		pt_set_page_permissions(curenv->env_page_directory, (*va), 0, PERM_USED);
 		curenv->page_last_WS_index++;
 		curenv->page_last_WS_index %= curenv->page_WS_max_size;
-		va = env_page_ws_get_virtual_address(curenv, curenv->page_last_WS_index),
-		perms = pt_get_page_permissions(curenv->env_page_directory, va);
+		(*va) = env_page_ws_get_virtual_address(curenv, curenv->page_last_WS_index),
+		(*perms) = pt_get_page_permissions(curenv->env_page_directory, (*va));
 	}
 }
 
@@ -151,9 +150,9 @@ void page_fault_handler(struct Env *curenv, uint32 fault_va)
 		PlacementStrategy(curenv, fault_va);
 	else // replacement strategy
 	{
-		clk(curenv);
 		int va = env_page_ws_get_virtual_address(curenv, curenv->page_last_WS_index),
 		perms = pt_get_page_permissions(curenv->env_page_directory, va);
+		clk(curenv, &va, &perms);
 		uint32 *ptr_page_table = NULL;
 		struct FrameInfo *ptr_frame_info = get_frame_info(curenv->env_page_directory, va, &ptr_page_table);
 		if ((perms & PERM_MODIFIED) == PERM_MODIFIED)
