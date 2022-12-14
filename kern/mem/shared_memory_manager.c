@@ -265,30 +265,18 @@ int getSizeOfSharedObject(int32 ownerID, char *shareName)
 
 void str(struct Env *myenv, uint32 va, int32 ownerID, int32 sharedObjectSize, int32 sharedObjectID) // for free shared variables
 {
-	for(int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
+	for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
 	{
-		struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[myenv->ENV_MAX_SHARES++];
+		struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[idx];
 		assert(sharedVarInfo != NULL);
-		if(sharedVarInfo->start_va == 0)
+		if (sharedVarInfo->size == 0)
 		{
 			sharedVarInfo->start_va = va;
 			sharedVarInfo->owner_flag = ownerID;
 			sharedVarInfo->size = sharedObjectSize;
 			sharedVarInfo->id_in_shares_array = sharedObjectID;
-			break;
+			return;
 		}
-	}
-}
-
-void create_sharing_variables_array(struct Env *myenv)
-{
-	if (myenv->ENV_MAX_SHARES == 0)
-	{
-		myenv->ENV_MAX_SHARES = MAX_SHARES;
-		myenv->ptr_sharing_variables = kmalloc(myenv->ENV_MAX_SHARES * sizeof(struct SharingVarInfo));
-		assert(myenv->ptr_sharing_variables != NULL);
-		for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
-			memset(&(myenv->ptr_sharing_variables[idx]), 0, sizeof(struct SharingVarInfo));
 	}
 }
 
@@ -328,9 +316,8 @@ int createSharedObject(int32 ownerID, char *shareName, uint32 size, uint8 isWrit
 		add_frame_to_storage(allocatedObject->framesStorage, ptr_frame_info_va, idx++);
 		start_source_va += PAGE_SIZE;
 	}
-	// panic("hehe");
+
 	// free shared variables
-	create_sharing_variables_array(myenv);
 	str(myenv, va, ownerID, size, sharedObjectID);
 
 	return sharedObjectID;
@@ -369,7 +356,6 @@ int getSharedObject(int32 ownerID, char *shareName, void *virtual_address)
 	}
 
 	// for free shared variables
-	create_sharing_variables_array(myenv);
 	str(myenv, va, ownerID, sharedObjectSize, sharedObjectID);
 
 	return sharedObjectID;
@@ -382,6 +368,17 @@ int getSharedObject(int32 ownerID, char *shareName, void *virtual_address)
 //===================
 // Free Share Object:
 //===================
+
+int check(uint32 sva, uint32 *ptr_page_table)
+{
+    for (int idx = 0; idx < NPTENTRIES; ++idx)
+    {
+        if (ptr_page_table[idx])
+            return 1;
+    }
+    return 0;
+}
+
 int freeSharedObject(int32 sharedObjectID, void *startVA)
 {
 	// TODO: [PROJECT MS3 - BONUS] [SHARING - KERNEL SIDE] freeSharedObject()
@@ -395,38 +392,56 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	// RETURN:
 	//	a) 0 if success
 	//	b) E_SHARED_MEM_NOT_EXISTS if the shared object is not exists
-
+	uint32 virtual_address = (uint32)startVA;
 	for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
 	{
 		struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[idx];
-		if (sharedVarInfo->start_va == (uint32)startVA)
+		assert(sharedVarInfo != NULL);
+		if (sharedVarInfo->size != 0 && sharedVarInfo->start_va == virtual_address)
 		{
-			// panic("hehe");
 			sharedObjectID = sharedVarInfo->id_in_shares_array;
-			sharedVarInfo->start_va = 0;
+			sharedVarInfo->size = 0;
 			break;
 		}
 	}
-
+	assert(sharedObjectID != -1);
 	if (sharedObjectID == -1)
-	{
-		panic("sharedObj == -1");
 		return E_SHARED_MEM_NOT_EXISTS;
-	}
 
 	// Steps:
 	//	1) Get the shared object from the "shares" array (use get_share_object_ID())
 	struct Share *allocatedObj = &shares[sharedObjectID];
+
 	//	2) Unmap it from the current environment "myenv"
+	uint32 size = allocatedObj->size, start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE);
+    while (start_source_va < end_source_va)
+    {
+        unmap_frame(myenv->env_page_directory, start_source_va);
+        start_source_va += PAGE_SIZE;
+    }
+
 	//	3) If one or more table becomes empty, remove it
+	start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE * NPTENTRIES), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE * NPTENTRIES);
+    while (start_source_va < end_source_va)
+    {
+        uint32 *ptr_page_table = NULL;
+        get_page_table(myenv->env_page_directory, start_source_va, &ptr_page_table);
+        if (ptr_page_table != NULL && !check(start_source_va, ptr_page_table)) // check if the page table is empty
+        {
+            // we need to deallocate the physical frame that holds the empty page table
+            kfree((void *)ptr_page_table);
+            pd_clear_page_dir_entry(myenv->env_page_directory, start_source_va);
+        }
+        start_source_va += PAGE_SIZE * NPTENTRIES;
+    }
+
 	//	4) Update references
 	allocatedObj->references--;
+
 	//	5) If this is the last share, delete the share object (use free_share_object())
 	if (allocatedObj->references == 0)
-	{
-		// panic("hehe");
 		free_share_object(sharedObjectID);
-	}
+
 	//	6) Flush the cache "tlbflush()"
 	tlbflush();
 	return 0;

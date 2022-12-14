@@ -247,7 +247,7 @@ void sfree(void *virtual_address)
 
 	// Write your code here, remove the panic and write your code
 	// panic("sfree() is not implemented yet...!!");
-	free(virtual_address);
+	// free(virtual_address);
 	sys_freeSharedObject(-1, virtual_address);
 }
 

@@ -149,6 +149,8 @@ struct Env *env_create(char *user_program_name, unsigned int page_WS_size, unsig
 	// 2016
 	e->page_WS_max_size = page_WS_size;
 
+	e->ENV_MAX_SHARES = MAX_SHARES;
+
 	// 2020
 	if (isPageReplacmentAlgorithmLRU(PG_REP_LRU_LISTS_APPROX))
 	{
@@ -708,6 +710,18 @@ static int program_segment_alloc_map_copy_workingset(struct Env *e, struct Progr
 	return 0;
 }
 
+//==================================================
+// DYNAMICALLY ALLOCATE SPACE FOR SHARED VARIABLES INFO ARRAY:
+//==================================================
+void *create_sharing_variables_array(struct Env *myenv, unsigned int numOfElements)
+{
+	uint32 nBytes = sizeof(struct SharingVarInfo) * numOfElements;
+	struct SharingVarInfo *ptr_sharing_variables = kmalloc(nBytes);
+	if (ptr_sharing_variables == NULL)
+		panic("NOT ENOUGH KERNEL HEAP SPACE");
+	return ptr_sharing_variables;
+}
+
 //========================================================
 // 7) INITIALIZE THE ENV [MAIN INIT: DIR, WS, SHARES...):
 //========================================================
@@ -737,6 +751,9 @@ void initialize_environment(struct Env *e, uint32 *ptr_user_page_directory, unsi
 		e->env_page_directory[i] = ptr_page_directory[i];
 	}
 
+	// Allocate the shared variables info array
+	e->ptr_sharing_variables = create_sharing_variables_array(e, e->ENV_MAX_SHARES);
+
 	// Allocate the page working set for both kernel and user
 #if USE_KHEAP == 1
 	{
@@ -758,6 +775,12 @@ void initialize_environment(struct Env *e, uint32 *ptr_user_page_directory, unsi
 		{
 			LIST_INSERT_HEAD(&(e->PageWorkingSetList), &(e->ptr_pageWorkingSet[i]));
 		}
+	}
+
+	// initialize shared variable info array
+	for (i = 0; i < e->ENV_MAX_SHARES; ++i)
+	{
+		e->ptr_sharing_variables[i].size = 0;
 	}
 
 	// initialize environment working set
