@@ -421,21 +421,21 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
     }
 
 	// reflect changes in the environment working set
-	// uint32 page_last_WS_indx = myenv->page_last_WS_index;
-    // do
-    // {
-    //     uint32 idx = myenv->page_last_WS_index;
-    //     if (!env_page_ws_is_entry_empty(myenv, idx))
-    //     {
-    //         uint32 ws_virtual_address = env_page_ws_get_virtual_address(myenv, idx);
-    //         // check if the working set entry is not empty and its virtual address between the destined space for deallocation
-    //         // because there might be working set entries that does belong to other objects/variables
-    //         if (ws_virtual_address >= virtual_address && ws_virtual_address < end_source_va)
-    //             env_page_ws_clear_entry(myenv, idx);
-    //     }
-    //     myenv->page_last_WS_index++;
-    //     myenv->page_last_WS_index %= myenv->page_WS_max_size;
-    // } while (page_last_WS_indx != myenv->page_last_WS_index);
+	uint32 page_last_WS_indx = myenv->page_last_WS_index;
+    do
+    {
+        uint32 idx = myenv->page_last_WS_index;
+        if (!env_page_ws_is_entry_empty(myenv, idx))
+        {
+            uint32 ws_virtual_address = env_page_ws_get_virtual_address(myenv, idx);
+            // check if the working set entry is not empty and its virtual address between the destined space for deallocation
+            // because there might be working set entries that does belong to other objects/variables
+            if (ws_virtual_address >= virtual_address && ws_virtual_address < end_source_va)
+                env_page_ws_clear_entry(myenv, idx);
+        }
+        myenv->page_last_WS_index++;
+        myenv->page_last_WS_index %= myenv->page_WS_max_size;
+    } while (page_last_WS_indx != myenv->page_last_WS_index);
 
 	//	3) If one or more table becomes empty, remove it
 	start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE * NPTENTRIES), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE * NPTENTRIES);
