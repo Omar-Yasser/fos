@@ -371,12 +371,12 @@ int getSharedObject(int32 ownerID, char *shareName, void *virtual_address)
 
 int check(uint32 sva, uint32 *ptr_page_table) // to check if the given page table is empty
 {
-    for (int idx = 0; idx < NPTENTRIES; ++idx)
-    {
-        if (ptr_page_table[idx])
-            return 1;
-    }
-    return 0;
+	for (int idx = 0; idx < NPTENTRIES; ++idx)
+	{
+		if (ptr_page_table[idx])
+			return 1;
+	}
+	return 0;
 }
 
 int freeSharedObject(int32 sharedObjectID, void *startVA)
@@ -393,15 +393,19 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	//	a) 0 if success
 	//	b) E_SHARED_MEM_NOT_EXISTS if the shared object is not exists
 	uint32 virtual_address = (uint32)startVA;
-	for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
+
+	if (sharedObjectID == -1)
 	{
-		struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[idx];
-		assert(sharedVarInfo != NULL);
-		if (sharedVarInfo->size != 0 && sharedVarInfo->start_va == virtual_address)
+		for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
 		{
-			sharedObjectID = sharedVarInfo->id_in_shares_array;
-			sharedVarInfo->size = 0;
-			break;
+			struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[idx];
+			assert(sharedVarInfo != NULL);
+			if (sharedVarInfo->size != 0 && sharedVarInfo->start_va == virtual_address)
+			{
+				sharedObjectID = sharedVarInfo->id_in_shares_array;
+				sharedVarInfo->size = 0;
+				break;
+			}
 		}
 	}
 
@@ -414,43 +418,43 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 
 	//	2) Unmap it from the current environment "myenv"
 	uint32 size = allocatedObj->size, start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE);
-    while (start_source_va < end_source_va)
-    {
-        unmap_frame(myenv->env_page_directory, start_source_va);
-        start_source_va += PAGE_SIZE;
-    }
+	while (start_source_va < end_source_va)
+	{
+		unmap_frame(myenv->env_page_directory, start_source_va);
+		start_source_va += PAGE_SIZE;
+	}
 
 	// reflect changes in the environment working set
 	uint32 page_last_WS_indx = myenv->page_last_WS_index;
-    do
-    {
-        uint32 idx = myenv->page_last_WS_index;
-        if (!env_page_ws_is_entry_empty(myenv, idx))
-        {
-            uint32 ws_virtual_address = env_page_ws_get_virtual_address(myenv, idx);
-            // check if the working set entry is not empty and its virtual address between the destined space for deallocation
-            // because there might be working set entries that does belong to other objects/variables
-            if (ws_virtual_address >= virtual_address && ws_virtual_address < end_source_va)
-                env_page_ws_clear_entry(myenv, idx);
-        }
-        myenv->page_last_WS_index++;
-        myenv->page_last_WS_index %= myenv->page_WS_max_size;
-    } while (page_last_WS_indx != myenv->page_last_WS_index);
+	do
+	{
+		uint32 idx = myenv->page_last_WS_index;
+		if (!env_page_ws_is_entry_empty(myenv, idx))
+		{
+			uint32 ws_virtual_address = env_page_ws_get_virtual_address(myenv, idx);
+			// check if the working set entry is not empty and its virtual address between the destined space for deallocation
+			// because there might be working set entries that does belong to other objects/variables
+			if (ws_virtual_address >= virtual_address && ws_virtual_address < end_source_va)
+				env_page_ws_clear_entry(myenv, idx);
+		}
+		myenv->page_last_WS_index++;
+		myenv->page_last_WS_index %= myenv->page_WS_max_size;
+	} while (page_last_WS_indx != myenv->page_last_WS_index);
 
 	//	3) If one or more table becomes empty, remove it
 	start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE * NPTENTRIES), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE * NPTENTRIES);
-    while (start_source_va < end_source_va)
-    {
-        uint32 *ptr_page_table = NULL;
-        get_page_table(myenv->env_page_directory, start_source_va, &ptr_page_table);
-        if (ptr_page_table != NULL && !check(start_source_va, ptr_page_table)) // check if the page table is empty
-        {
-            // we need to deallocate the physical frame that holds the empty page table
-            kfree((void *)ptr_page_table);
-            pd_clear_page_dir_entry(myenv->env_page_directory, start_source_va);
-        }
-        start_source_va += PAGE_SIZE * NPTENTRIES;
-    }
+	while (start_source_va < end_source_va)
+	{
+		uint32 *ptr_page_table = NULL;
+		get_page_table(myenv->env_page_directory, start_source_va, &ptr_page_table);
+		if (ptr_page_table != NULL && !check(start_source_va, ptr_page_table)) // check if the page table is empty
+		{
+			// we need to deallocate the physical frame that holds the empty page table
+			kfree((void *)ptr_page_table);
+			pd_clear_page_dir_entry(myenv->env_page_directory, start_source_va);
+		}
+		start_source_va += PAGE_SIZE * NPTENTRIES;
+	}
 
 	//	4) Update references
 	allocatedObj->references--;

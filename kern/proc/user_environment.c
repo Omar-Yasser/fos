@@ -408,16 +408,47 @@ void env_free(struct Env *e)
 	/*****************************************/
 	// TODO: [PROJECT MS3 - BONUS] [EXIT ENV] env_free
 	//  your code is here, remove the panic and write your code
-	panic("env_free() is not implemented yet...!!");
+	// panic("env_free() is not implemented yet...!!");
 
 	// [1] [NOT REQUIRED] [If BUFFERING is Enabled] Un-buffer any BUFFERED page belong to this environment from the free/modified lists
+	
 	// [2] Free the pages in the PAGE working set from the main memory
+	int i;
+	for(i = 0; i < e->page_WS_max_size; ++i)
+	{
+        if (!env_page_ws_is_entry_empty(e, i))
+            unmap_frame(e->env_page_directory, e->ptr_pageWorkingSet[i].virtual_address);
+    }
+
 	// [3] free the PAGE working set itself from the main memory
+	kfree(e->ptr_pageWorkingSet);
+
 	// [4] free the MemBlockNodes array of the USER HEAP dynamic allocator [if exists]
-	// [5] Free Shared variables [if any]
+	
+	
+	// [5] Free Shared variables [if any] 
+	for(i = 0; i < e->ENV_MAX_SHARES; ++i)
+	{
+		if(e->ptr_sharing_variables[i].size != 0)
+			freeSharedObject(e->ptr_sharing_variables[i].id_in_shares_array, (void *)e->ptr_sharing_variables[i].start_va);
+	}
+
 	// [6] Free Semaphores [if any]
+	for(i = 0; i < MAX_SEMAPHORES; ++i)
+	{
+		if(!semaphores[i].empty && semaphores[i].ownerID == e->env_id)
+			free_semaphore_object(i);
+	}
+
 	// [7] Free all TABLES from the main memory
+	for(i = 0; i < NPDENTRIES; ++i)
+	{
+		if(e->env_page_directory[i])
+			kfree((void *)e->env_page_directory[i]);
+	}
+
 	// [8] free the page DIRECTORY from the main memory
+	kfree(e->env_page_directory);
 
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
