@@ -153,7 +153,8 @@ int createSemaphore(int32 ownerEnvID, char *semaphoreName, uint32 initialValue)
 	// change this "return" according to your answer
 
 	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
-	if(semID == E_SEMAPHORE_EXISTS) return E_SEMAPHORE_EXISTS;
+	if (semID == E_SEMAPHORE_EXISTS)
+		return E_SEMAPHORE_EXISTS;
 
 	struct Semaphore *allocatedObject = NULL;
 	semID = allocate_semaphore_object(&allocatedObject);
@@ -163,7 +164,6 @@ int createSemaphore(int32 ownerEnvID, char *semaphoreName, uint32 initialValue)
 	allocatedObject->ownerID = ownerEnvID;
 	allocatedObject->value = initialValue;
 	return semID;
-	
 }
 
 //============
@@ -216,7 +216,7 @@ void signalSemaphore(int ownerEnvID, char *semaphoreName)
 
 	//	2) Increment its value
 	semaphores[semID].value++;
-	
+
 	//	3) If less than or equal 0, release a blocked environment, by
 	//		a) removing it from semaphore queue		[refer to helper functions in doc]
 	//		b) adding it to ready queue				[refer to helper functions in doc]

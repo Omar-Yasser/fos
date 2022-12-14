@@ -324,12 +324,10 @@ void free_user_mem(struct Env *e, uint32 virtual_address, uint32 size)
         pf_remove_env_page(e, start_source_va);
         start_source_va += PAGE_SIZE;
     }
-    
+
     // 2. Free ONLY pages that are resident in the working set from the memory
-    uint32 page_last_WS_indx = e->page_last_WS_index;
-    do
+    for (int idx = 0; idx < e->page_WS_max_size; ++idx)
     {
-        uint32 idx = e->page_last_WS_index;
         if (!env_page_ws_is_entry_empty(e, idx))
         {
             uint32 ws_virtual_address = env_page_ws_get_virtual_address(e, idx);
@@ -341,9 +339,7 @@ void free_user_mem(struct Env *e, uint32 virtual_address, uint32 size)
                 env_page_ws_clear_entry(e, idx);
             }
         }
-        e->page_last_WS_index++;
-        e->page_last_WS_index %= e->page_WS_max_size;
-    } while (page_last_WS_indx != e->page_last_WS_index);
+    }
 
     // 3. Removes ONLY the empty page tables (i.e. not used) (no pages are mapped in the table)
     start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE * NPTENTRIES), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE * NPTENTRIES);

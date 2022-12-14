@@ -396,9 +396,10 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 
 	if (sharedObjectID == -1)
 	{
+		struct SharingVarInfo *sharedVarInfo;
 		for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
 		{
-			struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[idx];
+			sharedVarInfo = &myenv->ptr_sharing_variables[idx];
 			assert(sharedVarInfo != NULL);
 			if (sharedVarInfo->size != 0 && sharedVarInfo->start_va == virtual_address)
 			{
@@ -425,10 +426,8 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	}
 
 	// reflect changes in the environment working set
-	uint32 page_last_WS_indx = myenv->page_last_WS_index;
-	do
+	for (int idx = 0; idx < myenv->page_WS_max_size; ++idx)
 	{
-		uint32 idx = myenv->page_last_WS_index;
 		if (!env_page_ws_is_entry_empty(myenv, idx))
 		{
 			uint32 ws_virtual_address = env_page_ws_get_virtual_address(myenv, idx);
@@ -437,9 +436,7 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 			if (ws_virtual_address >= virtual_address && ws_virtual_address < end_source_va)
 				env_page_ws_clear_entry(myenv, idx);
 		}
-		myenv->page_last_WS_index++;
-		myenv->page_last_WS_index %= myenv->page_WS_max_size;
-	} while (page_last_WS_indx != myenv->page_last_WS_index);
+	}
 
 	//	3) If one or more table becomes empty, remove it
 	start_source_va = ROUNDDOWN(virtual_address, PAGE_SIZE * NPTENTRIES), end_source_va = ROUNDUP(virtual_address + size, PAGE_SIZE * NPTENTRIES);
