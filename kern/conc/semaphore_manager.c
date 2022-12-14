@@ -10,7 +10,6 @@
 #include <kern/mem/kheap.h>
 #include <kern/mem/memory_manager.h>
 
-
 //==================================================================================//
 //============================== GIVEN FUNCTIONS ===================================//
 //==================================================================================//
@@ -18,13 +17,13 @@
 //===============================
 // [1] Create "semaphores" array:
 //===============================
-//Dynamically allocate the "semaphores" array
-//initialize the "semaphores" array by 0's and empty = 1
+// Dynamically allocate the "semaphores" array
+// initialize the "semaphores" array by 0's and empty = 1
 void create_semaphores_array(uint32 numOfSemaphores)
 {
 #if USE_KHEAP
-	MAX_SEMAPHORES = numOfSemaphores ;
-	semaphores = (struct Semaphore*) kmalloc(numOfSemaphores*sizeof(struct Semaphore));
+	MAX_SEMAPHORES = numOfSemaphores;
+	semaphores = (struct Semaphore *)kmalloc(numOfSemaphores * sizeof(struct Semaphore));
 	if (semaphores == NULL)
 	{
 		panic("Kernel runs out of memory\nCan't create the array of semaphores.");
@@ -36,22 +35,20 @@ void create_semaphores_array(uint32 numOfSemaphores)
 		semaphores[i].empty = 1;
 		LIST_INIT(&(semaphores[i].env_queue));
 	}
-
 }
-
 
 //========================
 // [2] Allocate Semaphore:
 //========================
-//Allocates a new (empty) semaphore object from the "semaphores" array
-//Return:
+// Allocates a new (empty) semaphore object from the "semaphores" array
+// Return:
 //	a) if succeed:
 //		1. allocatedSemaphore (pointer to struct Semaphore) passed by reference
 //		2. SempahoreObjectID (its index in the array) as a return parameter
 //	b) E_NO_SEMAPHORE if the the array of semaphores is full (i.e. reaches "MAX_SEMAPHORES")
 int allocate_semaphore_object(struct Semaphore **allocatedObject)
 {
-	int32 semaphoreObjectID = -1 ;
+	int32 semaphoreObjectID = -1;
 	for (int i = 0; i < MAX_SEMAPHORES; ++i)
 	{
 		if (semaphores[i].empty)
@@ -63,10 +60,10 @@ int allocate_semaphore_object(struct Semaphore **allocatedObject)
 
 	if (semaphoreObjectID == -1)
 	{
-		//try to double the size of the "semaphores" array
-		#if USE_KHEAP
+// try to double the size of the "semaphores" array
+#if USE_KHEAP
 		{
-			semaphores = (struct Semaphore*) krealloc(semaphores, 2*MAX_SEMAPHORES);
+			semaphores = (struct Semaphore *)krealloc(semaphores, 2 * MAX_SEMAPHORES);
 			if (semaphores == NULL)
 			{
 				*allocatedObject = NULL;
@@ -78,13 +75,13 @@ int allocate_semaphore_object(struct Semaphore **allocatedObject)
 				MAX_SEMAPHORES *= 2;
 			}
 		}
-		#else
+#else
 		{
 			panic("Attempt to dynamically allocate space inside kernel while kheap is disabled .. ");
 			*allocatedObject = NULL;
 			return E_NO_SEMAPHORE;
 		}
-		#endif
+#endif
 	}
 
 	*allocatedObject = &(semaphores[semaphoreObjectID]);
@@ -96,19 +93,19 @@ int allocate_semaphore_object(struct Semaphore **allocatedObject)
 //======================
 // [3] Get Semaphore ID:
 //======================
-//Search for the given semaphore object in the "semaphores" array
-//Return:
+// Search for the given semaphore object in the "semaphores" array
+// Return:
 //	a) if found: SemaphoreObjectID (index of the semaphore object in the array)
 //	b) else: E_SEMAPHORE_NOT_EXISTS
-int get_semaphore_object_ID(int32 ownerID, char* name)
+int get_semaphore_object_ID(int32 ownerID, char *name)
 {
-	int i=0;
-	for(; i < MAX_SEMAPHORES; ++i)
+	int i = 0;
+	for (; i < MAX_SEMAPHORES; ++i)
 	{
 		if (semaphores[i].empty)
 			continue;
 
-		if(semaphores[i].ownerID == ownerID && strcmp(name, semaphores[i].name)==0)
+		if (semaphores[i].ownerID == ownerID && strcmp(name, semaphores[i].name) == 0)
 		{
 			return i;
 		}
@@ -119,8 +116,8 @@ int get_semaphore_object_ID(int32 ownerID, char* name)
 //====================
 // [4] Free Semaphore:
 //====================
-//delete the semaphore with the given ID from the "semaphores" array
-//Return:
+// delete the semaphore with the given ID from the "semaphores" array
+// Return:
 //	a) 0 if succeed
 //	b) E_SEMAPHORE_NOT_EXISTS if the semaphore is not exists
 int free_semaphore_object(uint32 semaphoreObjectID)
@@ -142,84 +139,92 @@ int free_semaphore_object(uint32 semaphoreObjectID)
 //======================
 // [1] Create Semaphore:
 //======================
-int createSemaphore(int32 ownerEnvID, char* semaphoreName, uint32 initialValue)
+int createSemaphore(int32 ownerEnvID, char *semaphoreName, uint32 initialValue)
 {
-	//TODO: [PROJECT MS3] [SEMAPHORES] createSemaphore
-	// your code is here, remove the panic and write your code
-	//panic("createSemaphore() is not implemented yet...!!");
-	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
-	if (semID == E_SEMAPHORE_NOT_EXISTS)
-	{
-		struct Semaphore *allocatedObject = NULL;
-		semID = allocate_semaphore_object(&allocatedObject);
-		if(semID == E_NO_SEMAPHORE)
-			return E_NO_SEMAPHORE;
-		strcpy(allocatedObject->name , semaphoreName);
-		allocatedObject->ownerID=ownerEnvID;
-		allocatedObject->value=initialValue;
-		return semID;
-	}
-	//create new semaphore object and initialize it by the given info (ownerID, name, value)
-	//Return:
+	// TODO: [PROJECT MS3] [SEMAPHORES] createSemaphore
+	//  your code is here, remove the panic and write your code
+	// panic("createSemaphore() is not implemented yet...!!");
+	// create new semaphore object and initialize it by the given info (ownerID, name, value)
+	// Return:
 	//	a) SemaphoreID (its index in the array) if succeed
 	//	b) E_SEMAPHORE_EXISTS if the semaphore is already exists
 	//	c) E_NO_SEMAPHORE if the the array of semaphores is full
 
-	//change this "return" according to your answer
-	return E_SEMAPHORE_EXISTS ;
+	// change this "return" according to your answer
+
+	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
+	if(semID == E_SEMAPHORE_EXISTS) return E_SEMAPHORE_EXISTS;
+
+	struct Semaphore *allocatedObject = NULL;
+	semID = allocate_semaphore_object(&allocatedObject);
+	if (semID == E_NO_SEMAPHORE)
+		return E_NO_SEMAPHORE;
+	strcpy(allocatedObject->name, semaphoreName);
+	allocatedObject->ownerID = ownerEnvID;
+	allocatedObject->value = initialValue;
+	return semID;
+	
 }
 
 //============
 // [2] Wait():
 //============
-void waitSemaphore(int32 ownerEnvID, char* semaphoreName)
+void waitSemaphore(int32 ownerEnvID, char *semaphoreName)
 {
-	//TODO: [PROJECT MS3] [SEMAPHORES] waitSemaphore
-	// your code is here, remove the panic and write your code
-	//panic("waitSemaphore() is not implemented yet...!!");
+	// TODO: [PROJECT MS3] [SEMAPHORES] waitSemaphore
+	//  your code is here, remove the panic and write your code
+	// panic("waitSemaphore() is not implemented yet...!!");
 
-	struct Env* myenv = curenv; //The calling environment
+	struct Env *myenv = curenv; // The calling environment
 
 	// Steps:
 	//	1) Get the Semaphore
+	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
+	assert(semID != E_SEMAPHORE_NOT_EXISTS);
+
 	//	2) Decrement its value
+	semaphores[semID].value--;
+
 	//	3) If negative, block the calling environment "myenv", by
 	//		a) adding it to semaphore queue		[refer to helper functions in doc]
 	//		b) changing its status to ENV_BLOCKED
 	//		c) set curenv with NULL
-	//	4) Call "fos_scheduler()" to continue running the remaining envs
-	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
-	semaphores[semID].value--;
-	if(semaphores[semID].value < 0){
-		enqueue(&semaphores[semID].env_queue,myenv);
+	if (semaphores[semID].value < 0)
+	{
+		enqueue(&semaphores[semID].env_queue, myenv);
 		myenv->env_status = ENV_BLOCKED;
-		curenv=NULL;
+		curenv = NULL;
 	}
+
+	//	4) Call "fos_scheduler()" to continue running the remaining envs
 	fos_scheduler();
 }
 
 //==============
 // [3] Signal():
 //==============
-void signalSemaphore(int ownerEnvID, char* semaphoreName)
+void signalSemaphore(int ownerEnvID, char *semaphoreName)
 {
-	//TODO: [PROJECT MS3] [SEMAPHORES] signalSemaphore
-	// your code is here, remove the panic and write your code
-	//panic("signalSemaphore() is not implemented yet...!!");
+	// TODO: [PROJECT MS3] [SEMAPHORES] signalSemaphore
+	//  your code is here, remove the panic and write your code
+	// panic("signalSemaphore() is not implemented yet...!!");
 
 	// Steps:
 	//	1) Get the Semaphore
+	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
+	assert(semID != E_SEMAPHORE_NOT_EXISTS);
+
 	//	2) Increment its value
+	semaphores[semID].value++;
+	
 	//	3) If less than or equal 0, release a blocked environment, by
 	//		a) removing it from semaphore queue		[refer to helper functions in doc]
 	//		b) adding it to ready queue				[refer to helper functions in doc]
 	//		c) changing its status to ENV_READY
-	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
-	semaphores[semID].value++;
-	if(semaphores[semID].value <= 0){
-		struct Env* myenv = dequeue(&semaphores[semID].env_queue);
+	if (semaphores[semID].value <= 0)
+	{
+		struct Env *myenv = dequeue(&semaphores[semID].env_queue);
 		sched_insert_ready(myenv);
 		myenv->env_status = ENV_READY;
 	}
 }
-
