@@ -425,13 +425,15 @@ void env_free(struct Env *e)
 
 	// [4] free the MemBlockNodes array of the USER HEAP dynamic allocator [if exists]
 	
-	
 	// [5] Free Shared variables [if any] 
 	for(i = 0; i < e->ENV_MAX_SHARES; ++i)
 	{
 		if(e->ptr_sharing_variables[i].size != 0)
 			freeSharedObject(e->ptr_sharing_variables[i].id_in_shares_array, (void *)e->ptr_sharing_variables[i].start_va);
 	}
+
+	// free Shared Variable Info array
+	kfree(e->ptr_sharing_variables);
 
 	// [6] Free Semaphores [if any]
 	for(i = 0; i < MAX_SEMAPHORES; ++i)

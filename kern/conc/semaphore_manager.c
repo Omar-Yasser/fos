@@ -151,9 +151,8 @@ int createSemaphore(int32 ownerEnvID, char *semaphoreName, uint32 initialValue)
 	//	c) E_NO_SEMAPHORE if the the array of semaphores is full
 
 	// change this "return" according to your answer
-
 	int semID = get_semaphore_object_ID(ownerEnvID, semaphoreName);
-	if (semID == E_SEMAPHORE_EXISTS)
+	if (semID != E_SEMAPHORE_NOT_EXISTS)
 		return E_SEMAPHORE_EXISTS;
 
 	struct Semaphore *allocatedObject = NULL;
