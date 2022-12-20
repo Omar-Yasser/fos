@@ -429,7 +429,11 @@ void env_free(struct Env *e)
 	for(i = 0; i < e->ENV_MAX_SHARES; ++i)
 	{
 		if(e->ptr_sharing_variables[i].size != 0)
-			freeSharedObject(e->ptr_sharing_variables[i].id_in_shares_array, (void *)e->ptr_sharing_variables[i].start_va);
+		{
+			shares[e->ptr_sharing_variables[i].id_in_shares_array].references--;
+			if(shares[e->ptr_sharing_variables[i].id_in_shares_array].references == 0) free_share_object(e->ptr_sharing_variables[i].id_in_shares_array);
+		}
+			// freeSharedObject(e->ptr_sharing_variables[i].id_in_shares_array, (void *)e->ptr_sharing_variables[i].start_va);
 	}
 
 	// free Shared Variable Info array
