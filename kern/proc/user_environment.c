@@ -442,11 +442,24 @@ void env_free(struct Env *e)
 			free_semaphore_object(i);
 	}
 
-	// [7] Free all TABLES from the main memory
-	for(i = 0; i < NPDENTRIES; ++i)
+	// Free all pages 
+	uint32 sva = 0, eva = USER_TOP;
+	while(sva < eva)
 	{
-		if(e->env_page_directory[i])
-			kfree((void *)e->env_page_directory[i]);
+		unmap_frame(e->env_page_directory, sva);
+		sva += PAGE_SIZE;
+	}
+
+	// [7] Free all TABLES from the main memory
+	sva = 0;
+	while(sva < eva)
+	{
+		unmap_frame(e->env_page_directory, sva);
+		uint32 *ptr_page_table = NULL;
+		int ret = get_page_table(e->env_page_directory, sva, &ptr_page_table);
+		if(ret != TABLE_NOT_EXIST)
+			kfree((void *)ptr_page_table);
+		sva += PAGE_SIZE * NPTENTRIES;
 	}
 
 	// [8] free the page DIRECTORY from the main memory

@@ -265,6 +265,7 @@ int getSizeOfSharedObject(int32 ownerID, char *shareName)
 
 void str(struct Env *myenv, uint32 va, int32 ownerID, int32 sharedObjectSize, int32 sharedObjectID) // for free shared variables
 {
+	va = ROUNDDOWN(va, PAGE_SIZE);
 	for (int idx = 0; idx < myenv->ENV_MAX_SHARES; ++idx)
 	{
 		struct SharingVarInfo *sharedVarInfo = &myenv->ptr_sharing_variables[idx];
@@ -401,7 +402,7 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 		{
 			sharedVarInfo = &myenv->ptr_sharing_variables[idx];
 			assert(sharedVarInfo != NULL);
-			if (sharedVarInfo->size != 0 && sharedVarInfo->start_va == virtual_address)
+			if (sharedVarInfo->size != 0 && sharedVarInfo->start_va == ROUNDDOWN(virtual_address, PAGE_SIZE))
 			{
 				sharedObjectID = sharedVarInfo->id_in_shares_array;
 				sharedVarInfo->size = 0;
@@ -443,8 +444,8 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	while (start_source_va < end_source_va)
 	{
 		uint32 *ptr_page_table = NULL;
-		get_page_table(myenv->env_page_directory, start_source_va, &ptr_page_table);
-		if (ptr_page_table != NULL && !check(start_source_va, ptr_page_table)) // check if the page table is empty
+		int ret = get_page_table(myenv->env_page_directory, start_source_va, &ptr_page_table);
+		if (ret != TABLE_NOT_EXIST && !check(start_source_va, ptr_page_table)) // check if the page table is empty
 		{
 			// we need to deallocate the physical frame that holds the empty page table
 			kfree((void *)ptr_page_table);
