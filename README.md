@@ -1,17 +1,21 @@
-# fos
+# FOS 
 
-**fos** is an educational operating system project that aims to promote open-source software and provide a platform for developers to collaborate on open-source projects. It was created as part of a subject project and implements various features such as Kernel Heap, Dynamic Allocation, Page Fault Handler, Semaphores, User Heap, and Shared Variables among more than one environment. This repository contains the source code for the **fos** operating system.
 
-## Features
+FCIS Operating System is an educational operating system inspired by MIT's JOS. It implements essential functionalities like memory management, fault handling, resource sharing, and concurrency, providing a valuable learning experience in operating system fundamentals. **This project was nominated by the professor as one of the top 3 best projects out of 300+ in the class, highlighting its exceptional quality.**
 
-The **fos** operating system implements the following features:
+**Key Features:**
 
-- Kernel Heap (free and allocation)
-- Dynamic Allocation
-- Page Fault Handler
-- Semaphores (CreateSemaphore, SIGNAL, and WAIT)
-- User Heap (free, freeMem, and malloc)
-- Shared Variables among more than one environment (createSharedObject, smalloc, getSharedObject)
+- **Memory Management:**
+    - Single-level page table for efficient memory organization.
+    - Translation Lookaside Buffer (TLB) cache for faster address translation.
+    - Clock replacement algorithm for effective page fault handling.
+- **Fault Handling:**
+    - Robust mechanisms to handle exceptions and errors, ensuring system stability.
+- **Resource Sharing:**
+    - Semaphores to coordinate access to shared resources, preventing race conditions.
+- **Concurrency:**
+    - Supports multiple processes running concurrently, fostering efficient resource utilization.
+
 
 
 ## Contributors
